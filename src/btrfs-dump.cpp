@@ -108,6 +108,38 @@ static string read_data(ifstream& f, uint64_t addr, uint64_t size, const map<uin
     return ret;
 }
 
+static string header_flags(uint64_t f) {
+    string ret;
+
+    if (f & btrfs::HEADER_FLAG_WRITTEN) {
+        ret += "written";
+        f &= ~btrfs::HEADER_FLAG_WRITTEN;
+    }
+
+    if (f & btrfs::HEADER_FLAG_RELOC) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "reloc";
+        f &= ~btrfs::HEADER_FLAG_RELOC;
+    }
+
+    if (f & btrfs::HEADER_FLAG_MIXED_BACKREF) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "mixed_backref";
+        f &= ~btrfs::HEADER_FLAG_MIXED_BACKREF;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
 static void dump_tree(ifstream& f, uint64_t addr, string_view pref, const map<uint64_t, chunk>& chunks) {
     auto tree = read_data(f, addr, sb.nodesize, chunks);
 
@@ -141,7 +173,7 @@ static void dump_tree(ifstream& f, uint64_t addr, string_view pref, const map<ui
             break;
     }
 
-    cout << format("{}header csum={} fsid={} bytenr={:x} flags=%s chunk_tree_uuid={} generation={:x} owner={:x} nritems={:x} level={:x}", pref, csum, h.fsid, h.bytenr, /*header_flags($headbits[3]),*/ h.chunk_tree_uuid, h.generation, h.owner, h.nritems, h.level) << endl;
+    cout << format("{}header csum={} fsid={} bytenr={:x} flags={} chunk_tree_uuid={} generation={:x} owner={:x} nritems={:x} level={:x}", pref, csum, h.fsid, h.bytenr, header_flags(h.flags), h.chunk_tree_uuid, h.generation, h.owner, h.nritems, h.level) << endl;
 
     // $treenum = $headbits[6];
     //

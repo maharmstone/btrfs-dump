@@ -147,6 +147,7 @@ constexpr uint64_t FEATURE_COMPAT_RO_BLOCK_GROUP_TREE = 1 << 3;
 
 constexpr uint64_t HEADER_FLAG_WRITTEN = 1 << 0;
 constexpr uint64_t HEADER_FLAG_RELOC = 1 << 1;
+constexpr uint64_t HEADER_FLAG_MIXED_BACKREF = (uint64_t)1 << 56;
 constexpr uint64_t SUPER_FLAG_ERROR = 1 << 2;
 constexpr uint64_t SUPER_FLAG_SEEDING = (uint64_t)1 << 32;
 constexpr uint64_t SUPER_FLAG_METADUMP = (uint64_t)1 << 33;
