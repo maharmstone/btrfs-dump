@@ -335,20 +335,20 @@ static void read_superblock(ifstream& f) {
 //     $nodesize = $b[15];
 //
 //     $devs{$di[0]} = $f;
-//
-//     my $bootstrap = substr($b[32], 0, $b[18]);
-//
-//     while (length($bootstrap) > 0) {
-//         #print Dumper($bootstrap)."\n";
-//         @b2 = unpack("QCQ", $bootstrap);
-//         printf("bootstrap %x,%x,%x\n", @b2[0], @b2[1], @b2[2]);
-//         $bootstrap = substr($bootstrap, 0x11);
-//
-//         my @c = unpack("QQQQVVVvv", $bootstrap);
-//         dump_item(0xe4, substr($bootstrap, 0, 0x30 + ($c[7] * 0x20)), "", 0);
-//
-//         $bootstrap = substr($bootstrap, 0x30);
-//
+
+    auto bootstrap = span(sb.sys_chunk_array.data(), sb.sys_chunk_array_size);
+
+    while (!bootstrap.empty()) {
+        const auto& k = *(btrfs::key*)bootstrap.data();
+
+        cout << format("bootstrap {}\n", k);
+
+        bootstrap = bootstrap.subspan(sizeof(btrfs::key));
+
+        const auto& c = *(btrfs::chunk*)bootstrap.data();
+
+        cout << format("chunk_item {}", c) << endl;
+
 //         my %obj;
 //
 //         $obj{'offset'} = $b2[2];
@@ -365,10 +365,12 @@ static void read_superblock(ifstream& f) {
 //             $obj{'stripes'}[$i]{'physoffset'} = $cis[1];
 //             $obj{'stripes'}[$i]{'devid'} = $cis[0];
 //         }
+
+        bootstrap = bootstrap.subspan(offsetof(btrfs::chunk, stripe) + (c.num_stripes * sizeof(btrfs::stripe)));
 //
 //         push @l2p_bs, \%obj;
-//     }
-//
+    }
+
 //     my $backups = $b[33];
 //
 //     while (length($backups) > 0) {

@@ -761,3 +761,29 @@ struct std::formatter<btrfs::dev_item> {
                          d.start_offset, d.dev_group, d.seek_speed, d.bandwidth, d.uuid, d.fsid);
     }
 };
+
+template<>
+struct std::formatter<btrfs::chunk> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::chunk& c, format_context& ctx) const {
+        auto r = format_to(ctx.out(), "length={:x} owner={:x} stripe_len={:x} type=%s io_align={:x} io_width={:x} sector_size={:x} num_stripes={:x} sub_stripes={:x}",
+                           c.length, c.owner, c.stripe_len, c.io_align, c.io_width, c.sector_size, c.num_stripes, c.sub_stripes);
+
+        for (unsigned int i = 0; i < c.num_stripes; i++) {
+            auto& s = c.stripe[i];
+
+            r = format_to(r, " stripe({}) devid={:x} offset={:x} dev_uuid={}", i, s.devid, s.offset, s.dev_uuid);
+        }
+
+        return r;
+    }
+};
