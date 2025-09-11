@@ -730,3 +730,22 @@ struct std::formatter<btrfs::uuid> {
                          u.uuid[6], u.uuid[5], u.uuid[4], u.uuid[3], u.uuid[2], u.uuid[1], u.uuid[0]);
     }
 };
+
+template<>
+struct std::formatter<btrfs::dev_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::dev_item& d, format_context& ctx) const {
+        return format_to(ctx.out(), "devid={:x} total_bytes={:x} bytes_used={:x} io_align={:x} io_width={:x} sector_size={:x} type={:x} generation={:x} start_offset={:x} dev_group={:x} seek_speed={:x} bandwidth={:x} uuid={} fsid={}",
+                         d.devid, d.total_bytes, d.bytes_used, d.io_align, d.io_width, d.sector_size, d.type, d.generation,
+                         d.start_offset, d.dev_group, d.seek_speed, d.bandwidth, d.uuid, d.fsid);
+    }
+};
