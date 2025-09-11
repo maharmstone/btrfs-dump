@@ -681,3 +681,31 @@ struct std::formatter<enum btrfs::raid_type> {
         }
     }
 };
+
+template<>
+struct std::formatter<enum btrfs::csum_type> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(enum btrfs::csum_type t, format_context& ctx) const {
+        switch (t) {
+            case btrfs::csum_type::CRC32:
+                return format_to(ctx.out(), "crc32");
+            case btrfs::csum_type::XXHASH:
+                return format_to(ctx.out(), "xxhash");
+            case btrfs::csum_type::SHA256:
+                return format_to(ctx.out(), "sha256");
+            case btrfs::csum_type::BLAKE2:
+                return format_to(ctx.out(), "blake2");
+            default:
+                return format_to(ctx.out(), "{:x}", (uint8_t)t);
+        }
+    }
+};
