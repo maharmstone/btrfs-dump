@@ -3,6 +3,7 @@
 #include <fstream>
 #include <format>
 #include <map>
+#include <functional>
 
 import cxxbtrfs;
 import formatted_error;
@@ -441,7 +442,8 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
     cout << endl;
 }
 
-static void dump_tree(ifstream& f, uint64_t addr, string_view pref, const map<uint64_t, chunk>& chunks) {
+static void dump_tree(ifstream& f, uint64_t addr, string_view pref, const map<uint64_t, chunk>& chunks,
+                      optional<function<void(const btrfs::key&, span<const uint8_t>)>> func = nullopt) {
     auto tree = read_data(f, addr, sb.nodesize, chunks);
 
     const auto& h = *(btrfs::header*)tree.data();
@@ -484,33 +486,9 @@ static void dump_tree(ifstream& f, uint64_t addr, string_view pref, const map<ui
 
             dump_item(item, pref, it.key);
 
-    //         if ($treenum == 3 && $ihb[1] == 0xe4) {
-    //             my @b = unpack("QQQQVVVvv", $item);
-    //             my $stripes = substr($item, 48);
-    //             my %obj;
-    //
-    //             my $numstripes = $b[7];
-    //
-    //             $obj{'offset'} = $ihb[2];
-    //             $obj{'size'} = $b[0];
-    //             $obj{'type'} = $b[3];
-    //             $obj{'num_stripes'} = $b[7];
-    //             $obj{'stripe_len'} = $b[2];
-    //             $obj{'sub_stripes'} = $b[8];
-    //
-    //             for (my $i = 0; $i < $numstripes; $i++) {
-    //                 my @cis = unpack("QQa16", $stripes);
-    //                 $stripes = substr($stripes, 32);
-    //
-    //                 $obj{'stripes'}[$i]{'physoffset'} = $cis[1];
-    //                 $obj{'stripes'}[$i]{'devid'} = $cis[0];
-    //             }
-    //
-    //             push @l2p, \%obj;
-    //
-    //             #print Dumper(@l2p);
-    //         }
-    //
+            if (func.has_value())
+                func.value()(it.key, item);
+
     //         if ($ihb[1] == 0x84) {
     //             if ($treenum == 1) {
     //                 $roots{$ihb[0]} = unpack("x176Q", $item);
@@ -583,7 +561,30 @@ static void dump(const filesystem::path& fn) {
     auto sys_chunks = load_sys_chunks();
 
     cout << "CHUNK:" << endl;
-    dump_tree(f, sb.chunk_root, "", sys_chunks);
+
+    map<uint64_t, chunk> chunks;
+
+    dump_tree(f, sb.chunk_root, "", sys_chunks, [&chunks](const btrfs::key& key, span<const uint8_t> item) {
+        if (key.type != btrfs::key_type::CHUNK_ITEM)
+            return;
+
+        const auto& c = *(chunk*)item.data();
+
+        if (item.size() < offsetof(btrfs::chunk, stripe) + (c.num_stripes * sizeof(btrfs::stripe)))
+            throw runtime_error("sys array truncated");
+
+        if (c.num_stripes > MAX_STRIPES) {
+            throw formatted_error("chunk num_stripes is {}, maximum supported is {}",
+                                  c.num_stripes, MAX_STRIPES);
+        }
+
+        chunks.insert(make_pair((uint64_t)key.offset, c));
+    });
+
+    cout << endl;
+
+    cout << "ROOT:" << endl;
+    dump_tree(f, sb.root, "", chunks);
     cout << endl;
 
     // FIXME
