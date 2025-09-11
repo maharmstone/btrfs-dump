@@ -763,6 +763,104 @@ struct std::formatter<btrfs::dev_item> {
     }
 };
 
+string block_group_item_flags(uint64_t f) {
+    string ret;
+
+    // FIXME - REMAPPED, REMAP
+
+    if (f & btrfs::BLOCK_GROUP_DATA) {
+        ret = "data";
+        f &= ~btrfs::BLOCK_GROUP_DATA;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_SYSTEM) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "system";
+        f &= ~btrfs::BLOCK_GROUP_SYSTEM;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_METADATA) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "metadata";
+        f &= ~btrfs::BLOCK_GROUP_METADATA;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_RAID0) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "raid0";
+        f &= ~btrfs::BLOCK_GROUP_RAID0;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_RAID1) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "raid1";
+        f &= ~btrfs::BLOCK_GROUP_RAID1;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_DUP) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "dup";
+        f &= ~btrfs::BLOCK_GROUP_DUP;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_RAID10) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "raid10";
+        f &= ~btrfs::BLOCK_GROUP_RAID10;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_RAID5) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "raid5";
+        f &= ~btrfs::BLOCK_GROUP_RAID5;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_RAID6) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "raid6";
+        f &= ~btrfs::BLOCK_GROUP_RAID6;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_RAID1C3) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "raid1c3";
+        f &= ~btrfs::BLOCK_GROUP_RAID1C3;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_RAID1C4) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "raid1c4";
+        f &= ~btrfs::BLOCK_GROUP_RAID1C4;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
 template<>
 struct std::formatter<btrfs::chunk> {
     constexpr auto parse(format_parse_context& ctx) {
@@ -776,8 +874,8 @@ struct std::formatter<btrfs::chunk> {
 
     template<typename format_context>
     auto format(const btrfs::chunk& c, format_context& ctx) const {
-        auto r = format_to(ctx.out(), "length={:x} owner={:x} stripe_len={:x} type=%s io_align={:x} io_width={:x} sector_size={:x} num_stripes={:x} sub_stripes={:x}",
-                           c.length, c.owner, c.stripe_len, c.io_align, c.io_width, c.sector_size, c.num_stripes, c.sub_stripes);
+        auto r = format_to(ctx.out(), "length={:x} owner={:x} stripe_len={:x} type={} io_align={:x} io_width={:x} sector_size={:x} num_stripes={:x} sub_stripes={:x}",
+                           c.length, c.owner, c.stripe_len, block_group_item_flags(c.type), c.io_align, c.io_width, c.sector_size, c.num_stripes, c.sub_stripes);
 
         for (unsigned int i = 0; i < c.num_stripes; i++) {
             auto& s = c.stripe[i];
