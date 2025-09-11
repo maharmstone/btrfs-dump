@@ -113,6 +113,8 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
 
     // FIXME - handle short items
 
+    cout << pref;
+
     switch (key.type) {
         // if ($type == 0x1 || $type == 0x84) { # INODE_ITEM or ROOT_ITEM
         //     if (length($s) < 0xa0) {
