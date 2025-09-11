@@ -367,22 +367,13 @@ static void read_superblock(ifstream& f) {
 //         }
 
         bootstrap = bootstrap.subspan(offsetof(btrfs::chunk, stripe) + (c.num_stripes * sizeof(btrfs::stripe)));
-//
+
 //         push @l2p_bs, \%obj;
     }
 
-//     my $backups = $b[33];
-//
-//     while (length($backups) > 0) {
-//         my $backup = substr($backups, 0, 168);
-//         $backups = substr($backups, 168);
-//
-//         my @b3 = unpack("QQQQQQQQQQQQQQQx32CCCCCCx10", $backup);
-//
-//         printf("backup tree_root=%x tree_root_gen=%x chunk_root=%x chunk_root_gen=%x extent_root=%x extent_root_gen=%x fs_root=%x fs_root_gen=%x dev_root=%x dev_root_gen=%x csum_root=%x csum_root_gen=%x total_bytes=%x bytes_used=%x num_devices=%x tree_root_level=%x chunk_root_level=%x extent_root_level=%x fs_root_level=%x dev_root_level=%x csum_root_level=%x\n", @b3);
-//     }
-//
-//     print "\n";
+    for (const auto& b : sb.super_roots) {
+        cout << format("backup {}", b) << endl;
+    }
 }
 
 static void dump(const filesystem::path& fn) {

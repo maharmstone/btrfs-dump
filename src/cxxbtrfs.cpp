@@ -787,3 +787,23 @@ struct std::formatter<btrfs::chunk> {
         return r;
     }
 };
+
+template<>
+struct std::formatter<btrfs::root_backup> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::root_backup& b, format_context& ctx) const {
+        return format_to(ctx.out(), "tree_root={:x} tree_root_gen={:x} chunk_root={:x} chunk_root_gen={:x} extent_root={:x} extent_root_gen={:x} fs_root={:x} fs_root_gen={:x} dev_root={:x} dev_root_gen={:x} csum_root={:x} csum_root_gen={:x} total_bytes={:x} bytes_used={:x} num_devices={:x} tree_root_level={:x} chunk_root_level={:x} extent_root_level={:x} fs_root_level={:x} dev_root_level={:x} csum_root_level={:x}",
+                         b.tree_root, b.tree_root_gen, b.chunk_root, b.chunk_root_gen, b.extent_root, b.extent_root_gen, b.fs_root, b.fs_root_gen,
+                         b.dev_root, b.dev_root_gen, b.csum_root, b.csum_root_gen, b.total_bytes, b.bytes_used, b.num_devices, b.tree_root_level,
+                         b.chunk_root_level, b.extent_root_level, b.fs_root_level, b.dev_root_level, b.csum_root_level);
+    }
+};
