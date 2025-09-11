@@ -117,11 +117,10 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
     cout << pref;
 
     switch (key.type) {
-        // if ($type == 0x1 || $type == 0x84) { # INODE_ITEM or ROOT_ITEM
-        //     if (length($s) < 0xa0) {
-        //         $s .= chr(0) x (0xa0 - length($s));
-        //     }
-        //
+        case btrfs::key_type::INODE_ITEM: {
+        // case btrfs::key_type::ROOT_ITEM:
+            const auto& ii = *(btrfs::inode_item*)s.data();
+
         //     @b = unpack("QQQQQVVVVQQQx32QVQVQVQV", $s);
         //     $s = substr($s, 0xa0);
         //
@@ -130,6 +129,8 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //     } else {
         //         print "inode_item";
         //     }
+
+            cout << format("inode_item {}", ii);
         //
         //     printf(" gen=%x transid=%x size=%x blocks=%x blockgroup=%x nlink=%x uid=%x gid=%x mode=%o rdev=%x flags=%s seq=%x atime=%s ctime=%s mtime=%s otime=%s", $b[0], $b[1], $b[2], $b[3], $b[4], $b[5], $b[6], $b[7], $b[8], $b[9], inode_flags($b[10]), $b[11], format_time($b[12], $b[13]), format_time($b[14], $b[15]), format_time($b[16], $b[17]), format_time($b[18], $b[19]));
         //
@@ -145,6 +146,11 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //
         //         printf(" gen2=%x uuid=%s par_uuid=%s rec_uuid=%s ctransid=%x otransid=%x stransid=%x rtransid=%x ctime=%s otime=%s stime=%s rtime=%s", $b[0], format_uuid($b[1]), format_uuid($b[2]), format_uuid($b[3]), $b[4], $b[5], $b[6], $b[7], format_time($b[8], $b[9]), format_time($b[10], $b[11]), format_time($b[12], $b[13]), format_time($b[14], $b[15]));
         //     }
+
+            s = s.subspan(sizeof(btrfs::inode_item));
+
+            break;
+        }
         // } elsif ($type == 0xc) { # INODE_REF
         //     printf("inode_ref");
         //

@@ -1351,3 +1351,39 @@ struct std::formatter<btrfs::header> {
 
     unsigned int csum_length = 4;
 };
+
+template<>
+struct std::formatter<btrfs::timespec> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::timespec& t, format_context& ctx) const {
+        return format_to(ctx.out(), "???");
+    }
+};
+
+template<>
+struct std::formatter<btrfs::inode_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::inode_item& ii, format_context& ctx) const {
+        return format_to(ctx.out(), "generation={:x} transid={:x} size={:x} nbytes={:x} block_group={:x} nlink={:x} uid={:x} gid={:x} mode={:x} rdev={:x} flags={:x} sequence={:x}"" atime={} ctime={} mtime={} otime={}",
+                         ii.generation, ii.transid, ii.size, ii.nbytes, ii.block_group, ii.nlink, ii.uid, ii.gid, ii.mode,
+                         ii.rdev, ii.flags, ii.sequence, ii.atime, ii.ctime, ii.mtime, ii.otime);
+    }
+};
