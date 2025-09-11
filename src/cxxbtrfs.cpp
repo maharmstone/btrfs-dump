@@ -1158,3 +1158,98 @@ struct std::formatter<btrfs::super_block> {
         return r;
     }
 };
+
+string header_flags(uint64_t f) {
+    string ret;
+
+    if (f & btrfs::HEADER_FLAG_WRITTEN) {
+        ret += "written";
+        f &= ~btrfs::HEADER_FLAG_WRITTEN;
+    }
+
+    if (f & btrfs::HEADER_FLAG_RELOC) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "reloc";
+        f &= ~btrfs::HEADER_FLAG_RELOC;
+    }
+
+    if (f & btrfs::HEADER_FLAG_MIXED_BACKREF) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "mixed_backref";
+        f &= ~btrfs::HEADER_FLAG_MIXED_BACKREF;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
+template<>
+struct std::formatter<btrfs::header> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}') {
+            switch (*it) {
+                case 'a':
+                    csum_length = 4;
+                    break;
+
+                case 'b':
+                    csum_length = 8;
+                    break;
+
+                case 'c':
+                    csum_length = 16;
+                    break;
+
+                default:
+                    throw format_error("invalid format");
+            }
+
+            it++;
+        }
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::header& h, format_context& ctx) const {
+        string csum;
+
+        switch (csum_length) {
+            case 4:
+                csum = std::format("{:08x}", *(uint32_t*)h.csum.data());
+                break;
+
+            case 8:
+                csum = std::format("{:016x}", *(uint64_t*)h.csum.data());
+                break;
+
+            case 16:
+                csum = std::format("{:016x}{:016x}{:016x}{:016x}", *(uint64_t*)&h.csum[0],
+                                   *(uint64_t*)&h.csum[sizeof(uint64_t)], *(uint64_t*)&h.csum[2 * sizeof(uint64_t)],
+                                   *(uint64_t*)&h.csum[3 * sizeof(uint64_t)]);
+                break;
+
+            default:
+                csum = "???";
+                break;
+        }
+
+        return format_to(ctx.out(), "csum={} fsid={} bytenr={:x} flags={} chunk_tree_uuid={} generation={:x} owner={:x} nritems={:x} level={:x}",
+                         csum, h.fsid, h.bytenr, header_flags(h.flags), h.chunk_tree_uuid, h.generation, h.owner, h.nritems, h.level);
+    }
+
+    unsigned int csum_length = 4;
+};

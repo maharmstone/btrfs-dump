@@ -108,38 +108,6 @@ static string read_data(ifstream& f, uint64_t addr, uint64_t size, const map<uin
     return ret;
 }
 
-static string header_flags(uint64_t f) {
-    string ret;
-
-    if (f & btrfs::HEADER_FLAG_WRITTEN) {
-        ret += "written";
-        f &= ~btrfs::HEADER_FLAG_WRITTEN;
-    }
-
-    if (f & btrfs::HEADER_FLAG_RELOC) {
-        if (!ret.empty())
-            ret += ",";
-
-        ret += "reloc";
-        f &= ~btrfs::HEADER_FLAG_RELOC;
-    }
-
-    if (f & btrfs::HEADER_FLAG_MIXED_BACKREF) {
-        if (!ret.empty())
-            ret += ",";
-
-        ret += "mixed_backref";
-        f &= ~btrfs::HEADER_FLAG_MIXED_BACKREF;
-    }
-
-    if (ret.empty())
-        ret += format("{:x}", f);
-    else if (f != 0)
-        ret += format(",{:x}", f);
-
-    return ret;
-}
-
 static void dump_tree(ifstream& f, uint64_t addr, string_view pref, const map<uint64_t, chunk>& chunks) {
     auto tree = read_data(f, addr, sb.nodesize, chunks);
 
@@ -150,30 +118,25 @@ static void dump_tree(ifstream& f, uint64_t addr, string_view pref, const map<ui
     if (h.bytenr != addr)
         throw formatted_error("Address mismatch: expected {:x}, got {:x}", addr, h.bytenr);
 
-    string csum;
-
+    // FIXME - make this less hacky (pass csum_type through to formatter?)
     switch (sb.csum_type) {
         case btrfs::csum_type::CRC32:
-            csum = std::format("{:08x}", *(uint32_t*)h.csum.data());
+            cout << format("{}header {:a}", pref, h) << endl;
             break;
 
         case btrfs::csum_type::XXHASH:
-            csum = std::format("{:016x}", *(uint64_t*)h.csum.data());
+            cout << format("{}header {:b}", pref, h) << endl;
             break;
 
         case btrfs::csum_type::SHA256:
         case btrfs::csum_type::BLAKE2:
-            csum = std::format("{:016x}{:016x}{:016x}{:016x}", *(uint64_t*)&h.csum[0],
-                               *(uint64_t*)&h.csum[sizeof(uint64_t)], *(uint64_t*)&h.csum[2 * sizeof(uint64_t)],
-                               *(uint64_t*)&h.csum[3 * sizeof(uint64_t)]);
+            cout << format("{}header {:c}", pref, h) << endl;
             break;
 
         default:
-            csum = "???";
+            cout << format("{}header {}", pref, h) << endl;
             break;
     }
-
-    cout << format("{}header csum={} fsid={} bytenr={:x} flags={} chunk_tree_uuid={} generation={:x} owner={:x} nritems={:x} level={:x}", pref, csum, h.fsid, h.bytenr, header_flags(h.flags), h.chunk_tree_uuid, h.generation, h.owner, h.nritems, h.level) << endl;
 
     // $treenum = $headbits[6];
     //
