@@ -189,6 +189,102 @@ static string incompat_flags(uint64_t f) {
     return ret;
 }
 
+static string format_super_flags(uint64_t f) {
+    string ret;
+
+    if (f & btrfs::HEADER_FLAG_WRITTEN) {
+        ret += "written";
+        f &= ~btrfs::HEADER_FLAG_WRITTEN;
+    }
+
+    if (f & btrfs::HEADER_FLAG_RELOC) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "reloc";
+        f &= ~btrfs::HEADER_FLAG_RELOC;
+    }
+
+    if (f & btrfs::SUPER_FLAG_ERROR) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "error";
+        f &= ~btrfs::SUPER_FLAG_ERROR;
+    }
+
+    if (f & btrfs::SUPER_FLAG_SEEDING) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "seeding";
+        f &= ~btrfs::SUPER_FLAG_SEEDING;
+    }
+
+    if (f & btrfs::SUPER_FLAG_METADUMP) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "metadump";
+        f &= ~btrfs::SUPER_FLAG_METADUMP;
+    }
+
+    if (f & btrfs::SUPER_FLAG_METADUMP_V2) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "metadump_v2";
+        f &= ~btrfs::SUPER_FLAG_METADUMP_V2;
+    }
+
+    if (f & btrfs::SUPER_FLAG_CHANGING_FSID) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "changing_fsid";
+        f &= ~btrfs::SUPER_FLAG_CHANGING_FSID;
+    }
+
+    if (f & btrfs::SUPER_FLAG_CHANGING_FSID_V2) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "changing_fsid_v2";
+        f &= ~btrfs::SUPER_FLAG_CHANGING_FSID_V2;
+    }
+
+    if (f & btrfs::SUPER_FLAG_CHANGING_BG_TREE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "changing_bg_tree";
+        f &= ~btrfs::SUPER_FLAG_CHANGING_BG_TREE;
+    }
+
+    if (f & btrfs::SUPER_FLAG_CHANGING_DATA_CSUM) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "changing_data_csum";
+        f &= ~btrfs::SUPER_FLAG_CHANGING_DATA_CSUM;
+    }
+
+    if (f & btrfs::SUPER_FLAG_CHANGING_META_CSUM) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "changing_meta_csum";
+        f &= ~btrfs::SUPER_FLAG_CHANGING_META_CSUM;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
 static void read_superblock(ifstream& f) {
     btrfs::super_block sb;
     string csum;
@@ -225,7 +321,7 @@ static void read_superblock(ifstream& f) {
     // array<uint8_t, 32> csum;
     // uuid fsid;
     // le64 bytenr;
-// le64 flags;
+    // le64 flags;
 // le64 magic;
     // le64 generation;
     // le64 root;
@@ -260,7 +356,7 @@ static void read_superblock(ifstream& f) {
     if (auto nul = label.find_first_of('\x00'); nul != string_view::npos)
         label = label.substr(0, nul);
 
-    cout << format("superblock csum={} fsid={} bytenr={:x} flags=%s magic=%s generation={:x} root={:x} chunk_root={:x} log_root={:x} log_root_transid={:x} total_bytes={:x} bytes_used={:x} root_dir_objectid={:x} num_devices={:x} sectorsize={:x} nodesize={:x} leafsize={:x} stripesize={:x} sys_chunk_array_size={:x} chunk_root_generation={:x} compat_flags={:x} compat_ro_flags={} incompat_flags={} csum_type={} root_level={:x} chunk_root_level={:x} log_root_level={:x} (dev_item {}) label={} cache_generation={:x} uuid_tree_generation={:x} metadata_uuid={}", csum, sb.fsid, sb.bytenr/*, format_super_flags(b[3]), b[4]*/, sb.generation, sb.root, sb.chunk_root, sb.log_root, sb.__unused_log_root_transid, sb.total_bytes, sb.bytes_used, sb.root_dir_objectid, sb.num_devices, sb.sectorsize, sb.nodesize, sb.__unused_leafsize, sb.stripesize, sb.sys_chunk_array_size, sb.chunk_root_generation, sb.compat_flags, compat_ro_flags(sb.compat_ro_flags), incompat_flags(sb.incompat_flags), sb.csum_type, sb.root_level, sb.chunk_root_level, sb.log_root_level, sb.dev_item, label, sb.cache_generation, sb.uuid_tree_generation, sb.metadata_uuid) << endl;
+    cout << format("superblock csum={} fsid={} bytenr={:x} flags={} magic=%s generation={:x} root={:x} chunk_root={:x} log_root={:x} log_root_transid={:x} total_bytes={:x} bytes_used={:x} root_dir_objectid={:x} num_devices={:x} sectorsize={:x} nodesize={:x} leafsize={:x} stripesize={:x} sys_chunk_array_size={:x} chunk_root_generation={:x} compat_flags={:x} compat_ro_flags={} incompat_flags={} csum_type={} root_level={:x} chunk_root_level={:x} log_root_level={:x} (dev_item {}) label={} cache_generation={:x} uuid_tree_generation={:x} metadata_uuid={}", csum, sb.fsid, sb.bytenr, format_super_flags(sb.flags)/*, b[4]*/, sb.generation, sb.root, sb.chunk_root, sb.log_root, sb.__unused_log_root_transid, sb.total_bytes, sb.bytes_used, sb.root_dir_objectid, sb.num_devices, sb.sectorsize, sb.nodesize, sb.__unused_leafsize, sb.stripesize, sb.sys_chunk_array_size, sb.chunk_root_generation, sb.compat_flags, compat_ro_flags(sb.compat_ro_flags), incompat_flags(sb.incompat_flags), sb.csum_type, sb.root_level, sb.chunk_root_level, sb.log_root_level, sb.dev_item, label, sb.cache_generation, sb.uuid_tree_generation, sb.metadata_uuid) << endl;
 
     // FIXME - nr_global_roots;
     // FIXME - remap_root;

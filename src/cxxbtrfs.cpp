@@ -145,6 +145,18 @@ constexpr uint64_t FEATURE_COMPAT_RO_FREE_SPACE_TREE_VALID = 1 << 1;
 constexpr uint64_t FEATURE_COMPAT_RO_VERITY = 1 << 2;
 constexpr uint64_t FEATURE_COMPAT_RO_BLOCK_GROUP_TREE = 1 << 3;
 
+constexpr uint64_t HEADER_FLAG_WRITTEN = 1 << 0;
+constexpr uint64_t HEADER_FLAG_RELOC = 1 << 1;
+constexpr uint64_t SUPER_FLAG_ERROR = 1 << 2;
+constexpr uint64_t SUPER_FLAG_SEEDING = (uint64_t)1 << 32;
+constexpr uint64_t SUPER_FLAG_METADUMP = (uint64_t)1 << 33;
+constexpr uint64_t SUPER_FLAG_METADUMP_V2 = (uint64_t)1 << 34;
+constexpr uint64_t SUPER_FLAG_CHANGING_FSID = (uint64_t)1 << 35;
+constexpr uint64_t SUPER_FLAG_CHANGING_FSID_V2 = (uint64_t)1 << 36;
+constexpr uint64_t SUPER_FLAG_CHANGING_BG_TREE = (uint64_t)1 << 38;
+constexpr uint64_t SUPER_FLAG_CHANGING_DATA_CSUM = (uint64_t)1 << 39;
+constexpr uint64_t SUPER_FLAG_CHANGING_META_CSUM = (uint64_t)1 << 40;
+
 constexpr uint64_t BLOCK_GROUP_DATA = 1 << 0;
 constexpr uint64_t BLOCK_GROUP_SYSTEM = 1 << 1;
 constexpr uint64_t BLOCK_GROUP_METADATA = 1 << 2;
