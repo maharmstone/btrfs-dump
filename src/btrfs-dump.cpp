@@ -8,6 +8,46 @@ import formatted_error;
 
 using namespace std;
 
+static string compat_ro_flags(uint64_t f) {
+    string ret;
+
+    if (f & btrfs::FEATURE_COMPAT_RO_FREE_SPACE_TREE) {
+        ret += "free_space_tree";
+        f &= ~btrfs::FEATURE_COMPAT_RO_FREE_SPACE_TREE;
+    }
+
+    if (f & btrfs::FEATURE_COMPAT_RO_FREE_SPACE_TREE_VALID) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "free_space_tree_valid";
+        f &= ~btrfs::FEATURE_COMPAT_RO_FREE_SPACE_TREE_VALID;
+    }
+
+    if (f & btrfs::FEATURE_COMPAT_RO_VERITY) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "verity";
+        f &= ~btrfs::FEATURE_COMPAT_RO_VERITY;
+    }
+
+    if (f & btrfs::FEATURE_COMPAT_RO_BLOCK_GROUP_TREE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "block_group_tree";
+        f &= ~btrfs::FEATURE_COMPAT_RO_BLOCK_GROUP_TREE;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
 static void read_superblock(ifstream& f) {
     btrfs::super_block sb;
     string csum;
@@ -62,7 +102,7 @@ static void read_superblock(ifstream& f) {
     // le32 sys_chunk_array_size;
     // le64 chunk_root_generation;
     // le64 compat_flags;
-// le64 compat_ro_flags;
+    // le64 compat_ro_flags;
 // le64 incompat_flags;
     // enum csum_type csum_type;
     // uint8_t root_level;
@@ -74,7 +114,7 @@ static void read_superblock(ifstream& f) {
     // le64 uuid_tree_generation;
     // uuid metadata_uuid;
 
-    cout << format("superblock csum={} fsid={} bytenr={:x} flags=%s magic=%s generation={:x} root={:x} chunk_root={:x} log_root={:x} log_root_transid={:x} total_bytes={:x} bytes_used={:x} root_dir_objectid={:x} num_devices={:x} sectorsize={:x} nodesize={:x} leafsize={:x} stripesize={:x} sys_chunk_array_size={:x} chunk_root_generation={:x} compat_flags={:x} compat_ro_flags=%s incompat_flags=%s csum_type={} root_level={:x} chunk_root_level={:x} log_root_level={:x} (dev_item {}) label=%s cache_generation={:x} uuid_tree_generation={:x} metadata_uuid={}", csum, sb.fsid, sb.bytenr/*, format_super_flags(b[3]), b[4]*/, sb.generation, sb.root, sb.chunk_root, sb.log_root, sb.__unused_log_root_transid, sb.total_bytes, sb.bytes_used, sb.root_dir_objectid, sb.num_devices, sb.sectorsize, sb.nodesize, sb.__unused_leafsize, sb.stripesize, sb.sys_chunk_array_size, sb.chunk_root_generation, sb.compat_flags/*, compat_ro_flags(b[21]), incompat_flags(b[22])*/, sb.csum_type, sb.root_level, sb.chunk_root_level, sb.log_root_level, sb.dev_item/*, b[28]*/, sb.cache_generation, sb.uuid_tree_generation, sb.metadata_uuid) << endl;
+    cout << format("superblock csum={} fsid={} bytenr={:x} flags=%s magic=%s generation={:x} root={:x} chunk_root={:x} log_root={:x} log_root_transid={:x} total_bytes={:x} bytes_used={:x} root_dir_objectid={:x} num_devices={:x} sectorsize={:x} nodesize={:x} leafsize={:x} stripesize={:x} sys_chunk_array_size={:x} chunk_root_generation={:x} compat_flags={:x} compat_ro_flags={} incompat_flags=%s csum_type={} root_level={:x} chunk_root_level={:x} log_root_level={:x} (dev_item {}) label=%s cache_generation={:x} uuid_tree_generation={:x} metadata_uuid={}", csum, sb.fsid, sb.bytenr/*, format_super_flags(b[3]), b[4]*/, sb.generation, sb.root, sb.chunk_root, sb.log_root, sb.__unused_log_root_transid, sb.total_bytes, sb.bytes_used, sb.root_dir_objectid, sb.num_devices, sb.sectorsize, sb.nodesize, sb.__unused_leafsize, sb.stripesize, sb.sys_chunk_array_size, sb.chunk_root_generation, sb.compat_flags, compat_ro_flags(sb.compat_ro_flags)/*, incompat_flags(b[22])*/, sb.csum_type, sb.root_level, sb.chunk_root_level, sb.log_root_level, sb.dev_item/*, b[28]*/, sb.cache_generation, sb.uuid_tree_generation, sb.metadata_uuid) << endl;
 
     // FIXME - nr_global_roots;
     // FIXME - remap_root;
