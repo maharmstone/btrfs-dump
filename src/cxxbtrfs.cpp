@@ -3,6 +3,7 @@ module;
 #include <stdint.h>
 #include <array>
 #include <format>
+#include <chrono>
 
 export module cxxbtrfs;
 
@@ -1365,7 +1366,15 @@ struct std::formatter<btrfs::timespec> {
 
     template<typename format_context>
     auto format(const btrfs::timespec& t, format_context& ctx) const {
-        return format_to(ctx.out(), "???");
+        auto tp = chrono::time_point<chrono::system_clock>(chrono::days{t.sec / 86400});
+        auto hms = chrono::hh_mm_ss{chrono::seconds{t.sec % 86400}};
+        auto ymd = chrono::year_month_day{chrono::floor<chrono::days>(tp)};
+
+        // FIXME - include nsec
+
+        return format_to(ctx.out(), "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
+                         (int)ymd.year(), (unsigned int)ymd.month(), (unsigned int)ymd.day(),
+                         hms.hours().count(), hms.minutes().count(), hms.seconds().count());
     }
 };
 
