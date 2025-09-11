@@ -178,7 +178,9 @@ constexpr uint64_t DATA_RELOC_TREE_OBJECTID = 0xfffffffffffffff7;
 
 constexpr uint64_t DEVICE_RANGE_RESERVED = 0x100000;
 
-using uuid = array<uint8_t, 16>;
+struct uuid {
+    array<uint8_t, 16> uuid;
+};
 
 struct dev_item {
     le64 devid;
@@ -707,5 +709,24 @@ struct std::formatter<enum btrfs::csum_type> {
             default:
                 return format_to(ctx.out(), "{:x}", (uint8_t)t);
         }
+    }
+};
+
+template<>
+struct std::formatter<btrfs::uuid> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::uuid& u, format_context& ctx) const {
+        return format_to(ctx.out(), "{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+                         u.uuid[15], u.uuid[14], u.uuid[13], u.uuid[12], u.uuid[11], u.uuid[10], u.uuid[9], u.uuid[8], u.uuid[7],
+                         u.uuid[6], u.uuid[5], u.uuid[4], u.uuid[3], u.uuid[2], u.uuid[1], u.uuid[0]);
     }
 };
