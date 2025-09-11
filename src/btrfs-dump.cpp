@@ -334,10 +334,15 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //     @b = unpack("QQQQa16", $s);
         //     $s = substr($s, 0x30);
         //     printf("dev_extent chunktree=%x, chunkobjid=%x, logaddr=%x, size=%x, chunktreeuuid=%s", $b[0], $b[1], $b[2], $b[3], format_uuid($b[4]));
-        // } elsif ($type == 0xd8) { # DEV_ITEM
-        //     @b = unpack("QQQVVVQQQVCCa16a16", $s);
-        //     printf("dev_item id=%x numbytes=%x bytesused=%x ioalign=%x iowidth=%x sectorsize=%x type=%x gen=%x startoff=%x devgroup=%x seekspeed=%x bandwidth=%x devid=%s fsid=%s", $b[0], $b[1],  $b[2], $b[3], $b[4], $b[5], $b[6], $b[7], $b[8], $b[9], $b[10], $b[11], format_uuid($b[12]), format_uuid($b[13]));
-        //     $s = substr($s, 0x62);
+
+        case btrfs::key_type::DEV_ITEM: {
+            const auto& d = *(btrfs::dev_item*)s.data();
+
+            cout << format("dev_item {}", d);
+
+            s = s.subspan(sizeof(btrfs::dev_item));
+            break;
+        }
 
         case btrfs::key_type::CHUNK_ITEM: {
             const auto& c = *(btrfs::chunk*)s.data();
