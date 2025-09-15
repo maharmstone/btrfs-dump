@@ -1414,7 +1414,7 @@ struct std::formatter<btrfs::inode_item> {
 
     template<typename format_context>
     auto format(const btrfs::inode_item& ii, format_context& ctx) const {
-        return format_to(ctx.out(), "generation={:x} transid={:x} size={:x} nbytes={:x} block_group={:x} nlink={:x} uid={:x} gid={:x} mode={:x} rdev={:x} flags={:x} sequence={:x}"" atime={} ctime={} mtime={} otime={}",
+        return format_to(ctx.out(), "generation={:x} transid={:x} size={:x} nbytes={:x} block_group={:x} nlink={:x} uid={:x} gid={:x} mode={:o} rdev={:x} flags={:x} sequence={:x}"" atime={} ctime={} mtime={} otime={}",
                          ii.generation, ii.transid, ii.size, ii.nbytes, ii.block_group, ii.nlink, ii.uid, ii.gid, ii.mode,
                          ii.rdev, ii.flags, ii.sequence, ii.atime, ii.ctime, ii.mtime, ii.otime);
     }
