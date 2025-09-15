@@ -212,7 +212,7 @@ constexpr uint64_t INODE_NODUMP = 1 << 8;
 constexpr uint64_t INODE_NOATIME = 1 << 9;
 constexpr uint64_t INODE_DIRSYNC = 1 << 10;
 constexpr uint64_t INODE_COMPRESS = 1 << 11;
-constexpr uint64_t INODE_ROOT_ITEM_INIT = 1 << 31;
+constexpr uint64_t INODE_ROOT_ITEM_INIT = (uint64_t)1 << 31;
 
 constexpr uint64_t INODE_RO_VERITY = 1 << 0;
 
