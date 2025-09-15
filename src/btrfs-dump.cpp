@@ -484,8 +484,7 @@ static void dump_tree(ifstream& f, uint64_t addr, string_view pref, const map<ui
         auto items = span((btrfs::item*)((uint8_t*)&h + sizeof(btrfs::header)), h.nritems);
 
         for (const auto& it : items) {
-            // FIXME - don't translate key type here
-            cout << format("{}{}\n", pref, it.key);
+            cout << format("{}{:x}\n", pref, it.key);
 
             auto item = span((uint8_t*)tree.data() + sizeof(btrfs::header) + it.offset, it.size);
 

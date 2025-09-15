@@ -648,6 +648,19 @@ struct std::formatter<btrfs::key> {
     constexpr auto parse(format_parse_context& ctx) {
         auto it = ctx.begin();
 
+        if (it != ctx.end() && *it != '}') {
+            switch (*it) {
+                case 'x':
+                    no_translate = true;
+                    break;
+
+                default:
+                    throw format_error("invalid format");
+            }
+
+            it++;
+        }
+
         if (it != ctx.end() && *it != '}')
             throw format_error("invalid format");
 
@@ -656,8 +669,13 @@ struct std::formatter<btrfs::key> {
 
     template<typename format_context>
     auto format(const btrfs::key& k, format_context& ctx) const {
-        return format_to(ctx.out(), "({:x},{},{:x})", k.objectid, k.type, k.offset);
+        if (no_translate)
+            return format_to(ctx.out(), "({:x},{:x},{:x})", k.objectid, (uint8_t)k.type, k.offset);
+        else
+            return format_to(ctx.out(), "({:x},{},{:x})", k.objectid, k.type, k.offset);
     }
+
+    bool no_translate = false;
 };
 
 template<>
