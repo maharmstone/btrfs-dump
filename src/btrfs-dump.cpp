@@ -426,13 +426,20 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //     printf("balance flags=%s data=(%s) metadata=(%s) sys=(%s)", join(',', @f), format_balance(substr($s, 0, 0x88)), format_balance(substr($s, 0x88, 0x88)), format_balance(substr($s, 0x110, 0x88)));
         //
         //     $s = substr($s, 0x1b8);
-        // } elsif ($type == 0xf9) { # DEV_STATS
-        //     print "dev_stats";
-        //
-        //     while (length($s) > 0) {
-        //         printf(" %x", unpack("Q", $s));
-        //         $s = substr($s, 8);
-        //     }
+
+        case PERSISTENT_ITEM: {
+            auto nums = span((uint64_t*)s.data(), s.size() / sizeof(uint64_t));
+
+            cout << format("dev_stats");
+
+            for (auto n : nums) {
+                cout << format(" {:x}", n);
+            }
+
+            s = s.subspan(nums.size_bytes());
+            break;
+        }
+
         // } elsif ($type == 0xfb) { # UUID_SUBVOL
         //     print "uuid_subvol";
         //
