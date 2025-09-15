@@ -352,8 +352,11 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             break;
         }
 
-        // } elsif ($type == 0xc7) { # FREE_SPACE_EXTENT
-        //     printf("free_space_extent");
+        case FREE_SPACE_EXTENT: {
+            cout << format("free_space_extent");
+            break;
+        }
+
         // } elsif ($type == 0xc8) { # FREE_SPACE_BITMAP
         //     printf("free_space_bitmap %s", free_space_bitmap($s, $id));
         //     $s = "";
