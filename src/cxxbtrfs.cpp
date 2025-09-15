@@ -505,12 +505,24 @@ struct inode_ref {
     le16 name_len;
 } __attribute__ ((__packed__));
 
+enum class dir_item_type : uint8_t {
+    unknown = 0,
+    reg_file = 1,
+    dir = 2,
+    chrdev = 3,
+    blkdev = 4,
+    fifo = 5,
+    sock = 6,
+    symlink = 7,
+    xattr = 8,
+};
+
 struct dir_item {
     key location;
     le64 transid;
     le16 data_len;
     le16 name_len;
-    uint8_t type;
+    dir_item_type type;
 } __attribute__ ((__packed__));
 
 struct block_group_item {
@@ -1670,6 +1682,46 @@ struct std::formatter<btrfs::inode_ref> {
 };
 
 template<>
+struct std::formatter<enum btrfs::dir_item_type> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(enum btrfs::dir_item_type t, format_context& ctx) const {
+        switch (t) {
+            using enum btrfs::dir_item_type;
+
+            case unknown:
+                return format_to(ctx.out(), "unknown");
+            case reg_file:
+                return format_to(ctx.out(), "reg_file");
+            case dir:
+                return format_to(ctx.out(), "dir");
+            case chrdev:
+                return format_to(ctx.out(), "chrdev");
+            case blkdev:
+                return format_to(ctx.out(), "blkdev");
+            case fifo:
+                return format_to(ctx.out(), "fifo");
+            case sock:
+                return format_to(ctx.out(), "sock");
+            case symlink:
+                return format_to(ctx.out(), "symlink");
+            case xattr:
+                return format_to(ctx.out(), "xattr");
+            default:
+                return format_to(ctx.out(), "{:x}", (uint8_t)t);
+        }
+    }
+};
+
+template<>
 struct std::formatter<btrfs::dir_item> {
     constexpr auto parse(format_parse_context& ctx) {
         auto it = ctx.begin();
@@ -1682,7 +1734,7 @@ struct std::formatter<btrfs::dir_item> {
 
     template<typename format_context>
     auto format(const btrfs::dir_item& di, format_context& ctx) const {
-        return format_to(ctx.out(), "location={:x} transid={:x} data_len={:x} name_len={:x} type={:x} name={}",
+        return format_to(ctx.out(), "location={:x} transid={:x} data_len={:x} name_len={:x} type={} name={}",
                          di.location, di.transid, di.data_len, di.name_len, di.type,
                          string_view((char*)&di + sizeof(btrfs::dir_item), di.name_len));
     }
