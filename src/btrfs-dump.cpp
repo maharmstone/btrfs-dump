@@ -236,25 +236,49 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             break;
         }
 
-        // } elsif ($type == 0x80) { # EXTENT_CSUM
-        //     print "extent_csum";
-        //
-        //     if ($csum_type == 1) { # xxhash
-        //         while (length($s) > 0) {
-        //             printf(" %016x", unpack("Q", $s));
-        //             $s = substr($s, 8);
-        //         }
-        //     } elsif ($csum_type == 2 || $csum_type == 3) { # sha256 or blake2
-        //         while (length($s) > 0) {
-        //             printf(" %016x%016x%016x%016x", unpack("QQQQ", $s));
-        //             $s = substr($s, 32);
-        //         }
-        //     } else {
-        //         while (length($s) > 0) {
-        //             printf(" %08x", unpack("V", $s));
-        //             $s = substr($s, 4);
-        //         }
-        //     }
+        case EXTENT_CSUM: {
+            cout << format("extent_csum");
+
+            switch (sb.csum_type) {
+                case btrfs::csum_type::CRC32: {
+                    auto nums = span((btrfs::le32*)s.data(), s.size() / sizeof(btrfs::le32));
+
+                    for (auto n : nums) {
+                        cout << format(" {:08x}", n);
+                    }
+
+                    s = s.subspan(nums.size_bytes());
+                    break;
+                }
+
+                case btrfs::csum_type::XXHASH: {
+                    auto nums = span((btrfs::le64*)s.data(), s.size() / sizeof(btrfs::le64));
+
+                    for (auto n : nums) {
+                        cout << format(" {:016x}", n);
+                    }
+
+                    s = s.subspan(nums.size_bytes());
+                    break;
+                }
+
+                case btrfs::csum_type::SHA256:
+                case btrfs::csum_type::BLAKE2: {
+                    using arr = array<btrfs::le64, 4>;
+                    auto nums = span((arr*)s.data(), s.size() / sizeof(arr));
+
+                    for (auto n : nums) {
+                        cout << format(" {:016x}{:016x}{:016x}{:016x}",
+                                       n[0], n[1], n[2], n[3]);
+                    }
+
+                    s = s.subspan(nums.size_bytes());
+                    break;
+                }
+            }
+
+            break;
+        }
 
         case ROOT_ITEM: {
             const auto& ri = *(btrfs::root_item*)s.data();
