@@ -315,6 +315,45 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //             }
         //         }
         //     }
+
+        case METADATA_ITEM: {
+            const auto& ei = *(btrfs::extent_item*)s.data();
+
+            cout << format("metadata_item {}", ei);
+
+            // FIXME - EXTENT_ITEM_V0(?)
+
+            s = s.subspan(sizeof(btrfs::extent_item));
+
+            while (s.size() >= sizeof(btrfs::extent_inline_ref)) {
+                bool handled = true;
+                const auto& eir = *(btrfs::extent_inline_ref*)s.data();
+
+                s = s.subspan(sizeof(btrfs::extent_inline_ref));
+
+                switch (eir.type) {
+                    case TREE_BLOCK_REF:
+                        cout << format(" tree_block_ref root={:x}", eir.offset);
+                    break;
+
+                    // FIXME - SHARED_BLOCK_REF
+                    // FIXME - EXTENT_DATA_REF
+                    // FIXME - SHARED_DATA_REF
+                    // FIXME - EXTENT_OWNER_REF
+
+                    default:
+                        cout << format(" {:02x}", (uint8_t)eir.type);
+                        handled = false;
+                    break;
+                }
+
+                if (!handled)
+                    break;
+            }
+
+            break;
+        }
+
         // } elsif ($type == 0xb0) { # TREE_BLOCK_REF
         //     printf("tree_block_ref ");
         // } elsif ($type == 0xb2) { # EXTENT_DATA_REF

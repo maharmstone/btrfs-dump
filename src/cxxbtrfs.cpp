@@ -210,6 +210,9 @@ constexpr uint64_t INODE_RO_VERITY = 1 << 0;
 
 constexpr uint64_t FREE_SPACE_USING_BITMAPS = 1 << 0;
 
+constexpr uint64_t EXTENT_FLAG_DATA = 1 << 0;
+constexpr uint64_t EXTENT_FLAG_TREE_BLOCK = 1 << 1;
+
 struct uuid {
     array<uint8_t, 16> uuid;
 };
@@ -519,6 +522,17 @@ struct block_group_item {
 struct free_space_info {
     le32 extent_count;
     le32 flags;
+} __attribute__ ((__packed__));
+
+struct extent_item {
+    le64 refs;
+    le64 generation;
+    le64 flags;
+} __attribute__ ((__packed__));
+
+struct extent_inline_ref {
+    key_type type;
+    le64 offset;
 } __attribute__ ((__packed__));
 
 enum class raid_type {
@@ -1704,5 +1718,47 @@ struct std::formatter<btrfs::free_space_info> {
     auto format(const btrfs::free_space_info& fsi, format_context& ctx) const {
         return format_to(ctx.out(), "extent_count={:x} flags={:x}",
                          fsi.extent_count, fsi.flags);
+    }
+};
+
+string extent_item_flags(uint64_t f) {
+    string ret;
+
+    if (f & btrfs::EXTENT_FLAG_DATA) {
+        ret += "data";
+        f &= ~btrfs::EXTENT_FLAG_DATA;
+    }
+
+    if (f & btrfs::EXTENT_FLAG_TREE_BLOCK) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "tree_block";
+        f &= ~btrfs::EXTENT_FLAG_TREE_BLOCK;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
+template<>
+struct std::formatter<btrfs::extent_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::extent_item& ei, format_context& ctx) const {
+        return format_to(ctx.out(), "refs={:x} generation={:x} flags={}",
+                         ei.refs, ei.generation, extent_item_flags(ei.flags));
     }
 };
