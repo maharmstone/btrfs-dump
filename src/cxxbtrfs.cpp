@@ -192,6 +192,22 @@ constexpr uint64_t DATA_RELOC_TREE_OBJECTID = 0xfffffffffffffff7;
 
 constexpr uint64_t DEVICE_RANGE_RESERVED = 0x100000;
 
+constexpr uint64_t INODE_NODATASUM = 1 << 0;
+constexpr uint64_t INODE_NODATACOW = 1 << 1;
+constexpr uint64_t INODE_READONLY = 1 << 2;
+constexpr uint64_t INODE_NOCOMPRESS = 1 << 3;
+constexpr uint64_t INODE_PREALLOC = 1 << 4;
+constexpr uint64_t INODE_SYNC = 1 << 5;
+constexpr uint64_t INODE_IMMUTABLE = 1 << 6;
+constexpr uint64_t INODE_APPEND = 1 << 7;
+constexpr uint64_t INODE_NODUMP = 1 << 8;
+constexpr uint64_t INODE_NOATIME = 1 << 9;
+constexpr uint64_t INODE_DIRSYNC = 1 << 10;
+constexpr uint64_t INODE_COMPRESS = 1 << 11;
+constexpr uint64_t INODE_ROOT_ITEM_INIT = 1 << 31;
+
+constexpr uint64_t INODE_RO_VERITY = 1 << 0;
+
 struct uuid {
     array<uint8_t, 16> uuid;
 };
@@ -1401,6 +1417,129 @@ struct std::formatter<btrfs::timespec> {
     }
 };
 
+string inode_item_flags(uint64_t f) {
+    string ret;
+
+    if (f & btrfs::INODE_NODATASUM) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "nodatasum";
+        f &= ~btrfs::INODE_NODATASUM;
+    }
+
+    if (f & btrfs::INODE_NODATACOW) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "nodatacow";
+        f &= ~btrfs::INODE_NODATACOW;
+    }
+
+    if (f & btrfs::INODE_READONLY) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "readonly";
+        f &= ~btrfs::INODE_READONLY;
+    }
+
+    if (f & btrfs::INODE_NOCOMPRESS) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "nocompress";
+        f &= ~btrfs::INODE_NOCOMPRESS;
+    }
+
+    if (f & btrfs::INODE_PREALLOC) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "prealloc";
+        f &= ~btrfs::INODE_PREALLOC;
+    }
+
+    if (f & btrfs::INODE_SYNC) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "sync";
+        f &= ~btrfs::INODE_SYNC;
+    }
+
+    if (f & btrfs::INODE_IMMUTABLE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "immutable";
+        f &= ~btrfs::INODE_IMMUTABLE;
+    }
+
+    if (f & btrfs::INODE_APPEND) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "append";
+        f &= ~btrfs::INODE_APPEND;
+    }
+
+    if (f & btrfs::INODE_NODUMP) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "nodump";
+        f &= ~btrfs::INODE_NODUMP;
+    }
+
+    if (f & btrfs::INODE_NOATIME) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "noatime";
+        f &= ~btrfs::INODE_NOATIME;
+    }
+
+    if (f & btrfs::INODE_DIRSYNC) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "dirsync";
+        f &= ~btrfs::INODE_DIRSYNC;
+    }
+
+    if (f & btrfs::INODE_COMPRESS) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "compress";
+        f &= ~btrfs::INODE_COMPRESS;
+    }
+
+    if (f & btrfs::INODE_ROOT_ITEM_INIT) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "root_item_init";
+        f &= ~btrfs::INODE_ROOT_ITEM_INIT;
+    }
+
+    if (f & (btrfs::INODE_RO_VERITY << 32)) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "ro_verity";
+        f &= ~(btrfs::INODE_RO_VERITY << 32);
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
 template<>
 struct std::formatter<btrfs::inode_item> {
     constexpr auto parse(format_parse_context& ctx) {
@@ -1414,9 +1553,9 @@ struct std::formatter<btrfs::inode_item> {
 
     template<typename format_context>
     auto format(const btrfs::inode_item& ii, format_context& ctx) const {
-        return format_to(ctx.out(), "generation={:x} transid={:x} size={:x} nbytes={:x} block_group={:x} nlink={:x} uid={:x} gid={:x} mode={:o} rdev={:x} flags={:x} sequence={:x}"" atime={} ctime={} mtime={} otime={}",
+        return format_to(ctx.out(), "generation={:x} transid={:x} size={:x} nbytes={:x} block_group={:x} nlink={:x} uid={:x} gid={:x} mode={:o} rdev={:x} flags={} sequence={:x}"" atime={} ctime={} mtime={} otime={}",
                          ii.generation, ii.transid, ii.size, ii.nbytes, ii.block_group, ii.nlink, ii.uid, ii.gid, ii.mode,
-                         ii.rdev, ii.flags, ii.sequence, ii.atime, ii.ctime, ii.mtime, ii.otime);
+                         ii.rdev, inode_item_flags(ii.flags), ii.sequence, ii.atime, ii.ctime, ii.mtime, ii.otime);
     }
 };
 
