@@ -553,10 +553,17 @@ enum class file_extent_item_type : uint8_t {
     prealloc = 2,
 };
 
+enum class compression_type : uint8_t {
+    none = 0,
+    zlib = 1,
+    lzo = 2,
+    zstd = 3,
+};
+
 struct file_extent_item {
     le64 generation;
     le64 ram_bytes;
-    uint8_t compression;
+    compression_type compression;
     uint8_t encryption;
     le16 other_encoding;
     file_extent_item_type type;
@@ -1859,6 +1866,36 @@ struct std::formatter<enum btrfs::file_extent_item_type> {
 };
 
 template<>
+struct std::formatter<enum btrfs::compression_type> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(enum btrfs::compression_type t, format_context& ctx) const {
+        switch (t) {
+            using enum btrfs::compression_type;
+
+            case none:
+                return format_to(ctx.out(), "none");
+            case zlib:
+                return format_to(ctx.out(), "zlib");
+            case lzo:
+                return format_to(ctx.out(), "lzo");
+            case zstd:
+                return format_to(ctx.out(), "zstd");
+            default:
+                return format_to(ctx.out(), "{:x}", (uint8_t)t);
+        }
+    }
+};
+
+template<>
 struct std::formatter<btrfs::file_extent_item> {
     constexpr auto parse(format_parse_context& ctx) {
         auto it = ctx.begin();
@@ -1871,7 +1908,7 @@ struct std::formatter<btrfs::file_extent_item> {
 
     template<typename format_context>
     auto format(const btrfs::file_extent_item& fei, format_context& ctx) const {
-        auto ret = format_to(ctx.out(), "generation={:x} ram_bytes={:x} compression={:x} encryption={:x} other_encoding={:x} type={}",
+        auto ret = format_to(ctx.out(), "generation={:x} ram_bytes={:x} compression={} encryption={:x} other_encoding={:x} type={}",
                          fei.generation, fei.ram_bytes, fei.compression, fei.encryption,
                          fei.other_encoding, fei.type);
 
