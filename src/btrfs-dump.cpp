@@ -476,7 +476,7 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //     $s = substr($s, 0x1b8);
 
         case PERSISTENT_ITEM: {
-            auto nums = span((uint64_t*)s.data(), s.size() / sizeof(uint64_t));
+            auto nums = span((btrfs::le64*)s.data(), s.size() / sizeof(btrfs::le64));
 
             cout << format("dev_stats");
 
