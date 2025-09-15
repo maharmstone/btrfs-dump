@@ -1292,7 +1292,7 @@ struct std::formatter<btrfs::super_block> {
         while (!bootstrap.empty()) {
             const auto& k = *(btrfs::key*)bootstrap.data();
 
-            r = format_to(r, "bootstrap {}\n", k);
+            r = format_to(r, "bootstrap {:x}\n", k);
 
             bootstrap = bootstrap.subspan(sizeof(btrfs::key));
 
