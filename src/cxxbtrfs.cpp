@@ -535,6 +535,11 @@ struct extent_inline_ref {
     le64 offset;
 } __attribute__ ((__packed__));
 
+struct tree_block_info {
+    btrfs::key key;
+    uint8_t level;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -1760,5 +1765,23 @@ struct std::formatter<btrfs::extent_item> {
     auto format(const btrfs::extent_item& ei, format_context& ctx) const {
         return format_to(ctx.out(), "refs={:x} generation={:x} flags={}",
                          ei.refs, ei.generation, extent_item_flags(ei.flags));
+    }
+};
+
+template<>
+struct std::formatter<btrfs::tree_block_info> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::tree_block_info& tbi, format_context& ctx) const {
+        return format_to(ctx.out(), "key={:x} level={:x}",
+                         tbi.key, tbi.level);
     }
 };
