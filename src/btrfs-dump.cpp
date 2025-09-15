@@ -154,8 +154,8 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //
         //         printf(" dir=%x index=%x n=%x name=%s", $b[0], $b[1], $b[2], $name);
         //     } while (length($s) > 0);
-        // } elsif ($type == 0x18 || $type == 0x60) { # XATTR_ITEM or DIR_INDEX
-        //     print $type == 0x54 ? "dir_item" : ($type == 0x18 ? "xattr_item" : "dir_index");
+        // } elsif ($type == 0x18) { # XATTR_ITEM
+        //     print $type == "xattr_item";
         //
         //     while (length($s) > 0) {
         //         @b = unpack("QCQQvvC", $s);
@@ -208,6 +208,16 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
 
                 s = s.subspan(sizeof(btrfs::dir_item) + di.data_len + di.name_len);
             } while (!s.empty());
+
+            break;
+        }
+
+        case DIR_INDEX: {
+            const auto& di = *(btrfs::dir_item*)s.data();
+
+            cout << format("dir_index {}", di);
+
+            s = s.subspan(sizeof(btrfs::dir_item) + di.data_len + di.name_len);
 
             break;
         }
