@@ -143,17 +143,19 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             break;
         }
 
-        // } elsif ($type == 0xd) { # INODE_EXTREF
-        //     printf("inode_extref");
-        //
-        //     do {
-        //         @b = unpack("QQv", $s);
-        //         $s = substr($s, 0x12);
-        //         my $name = substr($s, 0, $b[2]);
-        //         $s = substr($s, $b[2]);
-        //
-        //         printf(" dir=%x index=%x n=%x name=%s", $b[0], $b[1], $b[2], $name);
-        //     } while (length($s) > 0);
+        case INODE_EXTREF: {
+            cout << "inode_extref";
+
+            do {
+                const auto& ier = *(btrfs::inode_extref*)s.data();
+
+                cout << format(" {}", ier);
+
+                s = s.subspan(offsetof(btrfs::inode_extref, name) + ier.name_len);
+            } while (!s.empty());
+
+            break;
+        }
 
         case XATTR_ITEM: {
             cout << "xattr_item";

@@ -505,6 +505,13 @@ struct inode_ref {
     le16 name_len;
 } __attribute__ ((__packed__));
 
+struct inode_extref {
+    le64 parent_objectid;
+    le64 index;
+    le16 name_len;
+    char name[0];
+} __attribute__ ((__packed__));
+
 enum class dir_item_type : uint8_t {
     unknown = 0,
     reg_file = 1,
@@ -1678,6 +1685,25 @@ struct std::formatter<btrfs::inode_ref> {
         return format_to(ctx.out(), "index={:x} name_len={:x} name={}",
                          ir.index, ir.name_len,
                          string_view((char*)&ir + sizeof(btrfs::inode_ref), ir.name_len));
+    }
+};
+
+template<>
+struct std::formatter<btrfs::inode_extref> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::inode_extref& ier, format_context& ctx) const {
+        return format_to(ctx.out(), "parent_objectid={:x} index={:x} name_len={:x} name={}",
+                         ier.parent_objectid, ier.index, ier.name_len,
+                         string_view(ier.name, ier.name_len));
     }
 };
 
