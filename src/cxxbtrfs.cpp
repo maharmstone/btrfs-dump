@@ -212,6 +212,7 @@ constexpr uint64_t FREE_SPACE_USING_BITMAPS = 1 << 0;
 
 constexpr uint64_t EXTENT_FLAG_DATA = 1 << 0;
 constexpr uint64_t EXTENT_FLAG_TREE_BLOCK = 1 << 1;
+constexpr uint64_t BLOCK_FLAG_FULL_BACKREF = 1 << 8;
 
 struct uuid {
     array<uint8_t, 16> uuid;
@@ -1862,6 +1863,14 @@ string extent_item_flags(uint64_t f) {
 
         ret += "tree_block";
         f &= ~btrfs::EXTENT_FLAG_TREE_BLOCK;
+    }
+
+    if (f & btrfs::BLOCK_FLAG_FULL_BACKREF) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "full_backref";
+        f &= ~btrfs::BLOCK_FLAG_FULL_BACKREF;
     }
 
     if (ret.empty())
