@@ -568,7 +568,7 @@ static map<uint64_t, chunk> load_sys_chunks() {
 }
 
 static void dump(const filesystem::path& fn) {
-    map<uint64_t, uint64_t> roots;
+    map<int64_t, uint64_t> roots;
 
     ifstream f(fn);
 
@@ -618,7 +618,7 @@ static void dump(const filesystem::path& fn) {
     // FIXME - log
 
     for (auto [root_num, bytenr] : roots) {
-        cout << format("Tree {:x}:", root_num) << endl;
+        cout << format("Tree {:x}:", (uint64_t)root_num) << endl;
 
         dump_tree(f, bytenr, "", chunks);
         cout << endl;
