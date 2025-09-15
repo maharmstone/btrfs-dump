@@ -624,6 +624,23 @@ struct verity_descriptor_item {
     uint8_t encryption;
 } __attribute__ ((__packed__));
 
+enum class fsverity_hash_algorithm : uint8_t {
+    SHA256 = 1,
+    SHA512 = 2,
+};
+
+struct fsverity_descriptor {
+    uint8_t version;
+    fsverity_hash_algorithm hash_algorithm;
+    uint8_t log_blocksize;
+    uint8_t salt_size;
+    le32 __reserved_0x04;
+    le64 data_size;
+    uint8_t root_hash[64];
+    uint8_t salt[32];
+    uint8_t __reserved[144];
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -2133,5 +2150,72 @@ struct std::formatter<btrfs::verity_descriptor_item> {
     auto format(const btrfs::verity_descriptor_item& vdi, format_context& ctx) const {
         return format_to(ctx.out(), "size={:x} encryption={:x}",
                          vdi.size, vdi.encryption);
+    }
+};
+
+template<>
+struct std::formatter<enum btrfs::fsverity_hash_algorithm> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(enum btrfs::fsverity_hash_algorithm t, format_context& ctx) const {
+        switch (t) {
+            using enum btrfs::fsverity_hash_algorithm;
+
+            case SHA256:
+                return format_to(ctx.out(), "sha256");
+            case SHA512:
+                return format_to(ctx.out(), "sha512");
+            default:
+                return format_to(ctx.out(), "{:x}", (uint8_t)t);
+        }
+    }
+};
+
+template<>
+struct std::formatter<btrfs::fsverity_descriptor> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::fsverity_descriptor& desc, format_context& ctx) const {
+        auto& root_hash = *(array<btrfs::le64, 8>*)desc.root_hash;
+
+        auto ret = format_to(ctx.out(), "version={:x} hash_algorithm={} log_blocksize={:x} salt_size={:x} data_size={:x} ",
+                             desc.version, desc.hash_algorithm, desc.log_blocksize,
+                             desc.salt_size, desc.data_size);
+
+        if (desc.hash_algorithm == btrfs::fsverity_hash_algorithm::SHA256) {
+            ret = format_to(ret, "root_hash={:016x}{:016x}{:016x}{:016x}",
+                            root_hash[0], root_hash[1], root_hash[2],
+                            root_hash[3]);
+        } else {
+            ret = format_to(ret, "root_hash={:016x}{:016x}{:016x}{:016x}{:016x}{:016x}{:016x}{:016x}",
+                            root_hash[0], root_hash[1], root_hash[2],
+                            root_hash[3], root_hash[4], root_hash[5],
+                            root_hash[6], root_hash[7]);
+        }
+
+        if (desc.salt_size != 0) {
+            ret = format_to(ret, " salt=");
+            for (unsigned int i = 0; i < desc.salt_size; i++) {
+                ret = format_to(ret, "{:02x}", desc.salt[i]);
+            }
+        }
+
+        return ret;
     }
 };

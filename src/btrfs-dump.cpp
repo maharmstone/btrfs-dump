@@ -179,15 +179,16 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             };
 
             case VERITY_DESC_ITEM: {
-                cout << "verity_desc_item";
-
                 if (key.offset == 0) {
                     const auto& vdi = *(btrfs::verity_descriptor_item*)s.data();
 
-                    cout << format(" {}", vdi);
+                    cout << format("verity_desc_item {}", vdi);
                     s = s.subspan(sizeof(btrfs::verity_descriptor_item));
                 } else {
-                    // FIXME
+                    const auto& desc = *(btrfs::fsverity_descriptor*)s.data();
+
+                    cout << format("fsverity_descriptor {}", desc);
+                    s = s.subspan(sizeof(btrfs::fsverity_descriptor));
                 }
 
                 break;
