@@ -1646,3 +1646,22 @@ struct std::formatter<btrfs::block_group_item> {
                          bgi.used, bgi.chunk_objectid, block_group_item_flags(bgi.flags));
     }
 };
+
+template<>
+struct std::formatter<btrfs::dev_extent> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::dev_extent& de, format_context& ctx) const {
+        return format_to(ctx.out(), "chunk_tree={:x} chunk_objectid={:x} chunk_offset={:x} length={:x} chunk_tree_uuid={}",
+                         de.chunk_tree, de.chunk_objectid, de.chunk_offset,
+                         de.length, de.chunk_tree_uuid);
+    }
+};

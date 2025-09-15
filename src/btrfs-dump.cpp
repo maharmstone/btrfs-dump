@@ -353,10 +353,15 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         // } elsif ($type == 0xc8) { # FREE_SPACE_BITMAP
         //     printf("free_space_bitmap %s", free_space_bitmap($s, $id));
         //     $s = "";
-        // } elsif ($type == 0xcc) { # DEV_EXTENT
-        //     @b = unpack("QQQQa16", $s);
-        //     $s = substr($s, 0x30);
-        //     printf("dev_extent chunktree=%x, chunkobjid=%x, logaddr=%x, size=%x, chunktreeuuid=%s", $b[0], $b[1], $b[2], $b[3], format_uuid($b[4]));
+
+        case DEV_EXTENT: {
+            const auto& de = *(btrfs::dev_extent*)s.data();
+
+            cout << format("dev_extent {}", de);
+
+            s = s.subspan(sizeof(btrfs::dev_extent));
+            break;
+        }
 
         case DEV_ITEM: {
             const auto& d = *(btrfs::dev_item*)s.data();
