@@ -561,6 +561,8 @@ static map<uint64_t, chunk> load_sys_chunks() {
 }
 
 static void dump(const filesystem::path& fn) {
+    map<uint64_t, uint64_t> roots;
+
     ifstream f(fn);
 
     if (f.fail())
@@ -583,7 +585,7 @@ static void dump(const filesystem::path& fn) {
         const auto& c = *(chunk*)item.data();
 
         if (item.size() < offsetof(btrfs::chunk, stripe) + (c.num_stripes * sizeof(btrfs::stripe)))
-            throw runtime_error("sys array truncated");
+            throw runtime_error("chunk item truncated");
 
         if (c.num_stripes > MAX_STRIPES) {
             throw formatted_error("chunk num_stripes is {}, maximum supported is {}",
@@ -596,10 +598,24 @@ static void dump(const filesystem::path& fn) {
     cout << endl;
 
     cout << "ROOT:" << endl;
-    dump_tree(f, sb.root, "", chunks);
+    dump_tree(f, sb.root, "", chunks, [&roots](const btrfs::key& key, span<const uint8_t> item) {
+        if (key.type != btrfs::key_type::ROOT_ITEM)
+            return;
+
+        const auto& ri = *(btrfs::root_item*)item.data();
+
+        roots.insert(make_pair(key.objectid, ri.bytenr));
+    });
     cout << endl;
 
-    // FIXME
+    // FIXME - log
+
+    for (auto [root_num, bytenr] : roots) {
+        cout << format("Tree {:x}:", root_num) << endl;
+
+        dump_tree(f, bytenr, "", chunks);
+        cout << endl;
+    }
 }
 
 int main() {
