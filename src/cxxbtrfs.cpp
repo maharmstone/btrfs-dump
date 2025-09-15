@@ -547,6 +547,25 @@ struct extent_data_ref {
     le32 count;
 } __attribute__ ((__packed__));
 
+enum class file_extent_item_type : uint8_t {
+    inline_extent = 0,
+    reg = 1,
+    prealloc = 2,
+};
+
+struct file_extent_item {
+    le64 generation;
+    le64 ram_bytes;
+    uint8_t compression;
+    uint8_t encryption;
+    le16 other_encoding;
+    file_extent_item_type type;
+    le64 disk_bytenr;
+    le64 disk_num_bytes;
+    le64 offset;
+    le64 num_bytes;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -1808,5 +1827,60 @@ struct std::formatter<btrfs::extent_data_ref> {
     auto format(const btrfs::extent_data_ref& edr, format_context& ctx) const {
         return format_to(ctx.out(), "root={:x} objectid={:x} offset={:x} count={:x}",
                          edr.root, edr.objectid, edr.offset, edr.count);
+    }
+};
+
+template<>
+struct std::formatter<enum btrfs::file_extent_item_type> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(enum btrfs::file_extent_item_type t, format_context& ctx) const {
+        switch (t) {
+            using enum btrfs::file_extent_item_type;
+
+            case inline_extent:
+                return format_to(ctx.out(), "inline");
+            case reg:
+                return format_to(ctx.out(), "reg");
+            case prealloc:
+                return format_to(ctx.out(), "prealloc");
+            default:
+                return format_to(ctx.out(), "{:x}", (uint8_t)t);
+        }
+    }
+};
+
+template<>
+struct std::formatter<btrfs::file_extent_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::file_extent_item& fei, format_context& ctx) const {
+        auto ret = format_to(ctx.out(), "generation={:x} ram_bytes={:x} compression={:x} encryption={:x} other_encoding={:x} type={}",
+                         fei.generation, fei.ram_bytes, fei.compression, fei.encryption,
+                         fei.other_encoding, fei.type);
+
+        if (fei.type != btrfs::file_extent_item_type::inline_extent) {
+            ret = format_to(ret, " disk_bytenr={:x} disk_num_bytes={:x} offset={:x} num_bytes={:x}",
+                            fei.disk_bytenr, fei.disk_num_bytes, fei.offset,
+                            fei.num_bytes);
+        }
+
+        return ret;
     }
 };

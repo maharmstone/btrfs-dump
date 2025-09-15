@@ -222,20 +222,20 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             break;
         }
 
-        // } elsif ($type == 0x6c) { # EXTENT_DATA
-        //     @b = unpack("QQCCvC", $s);
-        //     $s = substr($s, 0x15);
-        //
-        //     printf("extent_data gen=%x size=%x comp=%s enc=%s otherenc=%s type=%s", $b[0], $b[1], $b[2], $b[3], $b[4], $b[5]);
-        //
-        //     if ($b[5] != 0) {
-        //         @b = unpack("QQQQ", $s);
-        //         $s = substr($s, 0x20);
-        //
-        //         printf(" ea=%x es=%x o=%x s=%x", @b);
-        //     } else {
-        //         $s = substr($s, $b[1]);
-        //     }
+        case EXTENT_DATA: {
+            const auto& fei = *(btrfs::file_extent_item*)s.data();
+
+            cout << format("extent_data {}", fei);
+
+            if (fei.type == btrfs::file_extent_item_type::inline_extent) {
+                s = s.subspan(offsetof(btrfs::file_extent_item, disk_bytenr));
+                s = s.subspan(fei.ram_bytes);
+            } else
+                s = s.subspan(sizeof(btrfs::file_extent_item));
+
+            break;
+        }
+
         // } elsif ($type == 0x80) { # EXTENT_CSUM
         //     print "extent_csum";
         //
