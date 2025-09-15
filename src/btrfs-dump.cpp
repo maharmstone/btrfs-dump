@@ -251,19 +251,6 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
 
             cout << format("root_item {}", ri);
 
-        //     if ($type != 0x1) {
-        //         @b = unpack("QQQQQQQVQCQCC", $s);
-        //         $s = substr($s, 0x4f);
-        //
-        //         #print Dumper(@b)."\n";
-        //         printf("; expgen=%x objid=%x blocknum=%x bytelimit=%x bytesused=%x snapshotgen=%x flags=%x numrefs=%x dropprogress=%x,%x,%x droplevel=%x rootlevel=%x", @b);
-        //
-        //         @b = unpack("Qa16a16a16QQQQQVQVQVQV", $s);
-        //         $s = substr($s, 0xc8); # above + 64 blank bytes
-        //
-        //         printf(" gen2=%x uuid=%s par_uuid=%s rec_uuid=%s ctransid=%x otransid=%x stransid=%x rtransid=%x ctime=%s otime=%s stime=%s rtime=%s", $b[0], format_uuid($b[1]), format_uuid($b[2]), format_uuid($b[3]), $b[4], $b[5], $b[6], $b[7], format_time($b[8], $b[9]), format_time($b[10], $b[11]), format_time($b[12], $b[13]), format_time($b[14], $b[15]));
-        //     }
-
             s = s.subspan(sizeof(btrfs::root_item));
 
             break;
