@@ -508,6 +508,12 @@ struct dir_item {
     uint8_t type;
 } __attribute__ ((__packed__));
 
+struct block_group_item {
+    le64 used;
+    le64 chunk_objectid;
+    le64 flags;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -1620,5 +1626,23 @@ struct std::formatter<btrfs::dir_item> {
         return format_to(ctx.out(), "location={:x} transid={:x} data_len={:x} name_len={:x} type={:x} name={}",
                          di.location, di.transid, di.data_len, di.name_len, di.type,
                          string_view((char*)&di + sizeof(btrfs::dir_item), di.name_len));
+    }
+};
+
+template<>
+struct std::formatter<btrfs::block_group_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::block_group_item& bgi, format_context& ctx) const {
+        return format_to(ctx.out(), "used={:x} chunk_objectid={:x} flags={}",
+                         bgi.used, bgi.chunk_objectid, block_group_item_flags(bgi.flags));
     }
 };

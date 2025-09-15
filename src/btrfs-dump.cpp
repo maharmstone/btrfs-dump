@@ -333,10 +333,17 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //     $s = substr($s, 4);
         //
         //     printf("shared_data_ref count=%x", @b);
-        // } elsif ($type == 0xc0) { # BLOCK_GROUP_ITEM
-        //     @b = unpack("QQQ", $s);
-        //     $s = substr($s, 0x18);
-        //     printf("block_group_item size=%x chunktreeid=%x flags=%s", $b[0], $b[1], block_group_item_flags($b[2]));
+
+        case BLOCK_GROUP_ITEM: {
+            const auto& bgi = *(btrfs::block_group_item*)s.data();
+
+            cout << format("block_group_item {}", bgi);
+
+            s = s.subspan(sizeof(btrfs::block_group_item));
+            break;
+
+        }
+
         // } elsif ($type == 0xc6) { # FREE_SPACE_INFO
         //     @b = unpack("VV", $s);
         //     $s = substr($s, 0x8);
