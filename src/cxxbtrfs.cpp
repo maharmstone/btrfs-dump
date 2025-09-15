@@ -208,6 +208,8 @@ constexpr uint64_t INODE_ROOT_ITEM_INIT = 1 << 31;
 
 constexpr uint64_t INODE_RO_VERITY = 1 << 0;
 
+constexpr uint64_t FREE_SPACE_USING_BITMAPS = 1 << 0;
+
 struct uuid {
     array<uint8_t, 16> uuid;
 };
@@ -512,6 +514,11 @@ struct block_group_item {
     le64 used;
     le64 chunk_objectid;
     le64 flags;
+} __attribute__ ((__packed__));
+
+struct free_space_info {
+    le32 extent_count;
+    le32 flags;
 } __attribute__ ((__packed__));
 
 enum class raid_type {
@@ -1663,5 +1670,39 @@ struct std::formatter<btrfs::dev_extent> {
         return format_to(ctx.out(), "chunk_tree={:x} chunk_objectid={:x} chunk_offset={:x} length={:x} chunk_tree_uuid={}",
                          de.chunk_tree, de.chunk_objectid, de.chunk_offset,
                          de.length, de.chunk_tree_uuid);
+    }
+};
+
+string free_space_info_flags(uint32_t f) {
+    string ret;
+
+    if (f & btrfs::FREE_SPACE_USING_BITMAPS) {
+        ret += "using_bitmaps";
+        f &= ~btrfs::FREE_SPACE_USING_BITMAPS;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
+template<>
+struct std::formatter<btrfs::free_space_info> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::free_space_info& fsi, format_context& ctx) const {
+        return format_to(ctx.out(), "extent_count={:x} flags={:x}",
+                         fsi.extent_count, fsi.flags);
     }
 };
