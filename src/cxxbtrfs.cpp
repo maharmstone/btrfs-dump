@@ -113,11 +113,11 @@ struct std::formatter<little_endian<T>> {
     std::string fmt;
 };
 
+export namespace btrfs {
+
 using le16 = little_endian<uint16_t>;
 using le32 = little_endian<uint32_t>;
 using le64 = little_endian<uint64_t>;
-
-export namespace btrfs {
 
 constexpr uint64_t superblock_addrs[] = { 0x10000, 0x4000000, 0x4000000000, 0x4000000000000 };
 

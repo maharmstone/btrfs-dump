@@ -447,20 +447,24 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             break;
         }
 
-        // } elsif ($type == 0xfb) { # UUID_SUBVOL
-        //     print "uuid_subvol";
-        //
-        //     while (length($s) > 0) {
-        //         printf(" %x", unpack("Q", $s));
-        //         $s = substr($s, 8);
-        //     }
-        // } elsif ($type == 0xfc) { # UUID_REC_SUBVOL
-        //     print "uuid_rec_subvol";
-        //
-        //     while (length($s) > 0) {
-        //         printf(" %x", unpack("Q", $s));
-        //         $s = substr($s, 8);
-        //     }
+        case UUID_SUBVOL: {
+            auto num = *(btrfs::le64*)s.data();
+
+            cout << format("uuid_subvol {:x}", num);
+
+            s = s.subspan(sizeof(num));
+            break;
+        }
+
+        case UUID_RECEIVED_SUBVOL: {
+            auto num = *(btrfs::le64*)s.data();
+
+            cout << format("uuid_rec_subvol {:x}", num);
+
+            s = s.subspan(sizeof(num));
+            break;
+        }
+
         // } elsif ($type == 0 && $id == 0xfffffffffffffff5) { # free space
         //     @b = unpack("QCQQQQ", $s);
         //     $s = substr($s, 0x29);
