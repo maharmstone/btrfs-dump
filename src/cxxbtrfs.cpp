@@ -1978,3 +1978,21 @@ struct std::formatter<btrfs::file_extent_item> {
         return ret;
     }
 };
+
+template<>
+struct std::formatter<btrfs::key_ptr> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::key_ptr& p, format_context& ctx) const {
+        return format_to(ctx.out(), "{:x} blockptr={:x} generation={:x}",
+                         p.key, p.blockptr, p.generation);
+    }
+};

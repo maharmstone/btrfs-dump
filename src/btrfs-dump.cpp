@@ -589,16 +589,13 @@ static void dump_tree(ifstream& f, uint64_t addr, string_view pref, const map<ui
     //         }
         }
     } else {
-    //     for (my $i = 0; $i < $numitems; $i++) {
-    //         my $itemhead = substr($tree, 0x65 + ($i * 0x21), 0x21);
-    //
-    //         my @ihb = unpack("QCQQQ", $itemhead);
-    //
-    //         print $pref;
-    //         printf("%x,%x,%x block=%x gen=%x\n", $ihb[0], $ihb[1], $ihb[2], $ihb[3], $ihb[4]);
-    //
-    //         dump_tree($ihb[3], " " . $pref, $bs);
-    //     }
+        auto items = span((btrfs::key_ptr*)((uint8_t*)&h + sizeof(btrfs::header)), h.nritems);
+        auto pref2 = string{pref} + " "; // FIXME
+
+        for (const auto& it : items) {
+            cout << format("{}{}\n", pref, it);
+            dump_tree(f, it.blockptr, pref2, chunks, func);
+        }
     }
 }
 
