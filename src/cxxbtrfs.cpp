@@ -1734,9 +1734,14 @@ struct std::formatter<btrfs::dir_item> {
 
     template<typename format_context>
     auto format(const btrfs::dir_item& di, format_context& ctx) const {
-        return format_to(ctx.out(), "location={:x} transid={:x} data_len={:x} name_len={:x} type={} name={}",
-                         di.location, di.transid, di.data_len, di.name_len, di.type,
-                         string_view((char*)&di + sizeof(btrfs::dir_item), di.name_len));
+        auto ret = format_to(ctx.out(), "location={:x} transid={:x} data_len={:x} name_len={:x} type={} name={}",
+                             di.location, di.transid, di.data_len, di.name_len, di.type,
+                             string_view((char*)&di + sizeof(btrfs::dir_item), di.name_len));
+
+        if (di.data_len != 0)
+            ret = format_to(ret, " data={}", string_view((char*)&di + sizeof(btrfs::dir_item) + di.name_len, di.data_len));
+
+        return ret;
     }
 };
 

@@ -154,21 +154,21 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //
         //         printf(" dir=%x index=%x n=%x name=%s", $b[0], $b[1], $b[2], $name);
         //     } while (length($s) > 0);
-        // } elsif ($type == 0x18) { # XATTR_ITEM
-        //     print $type == "xattr_item";
-        //
-        //     while (length($s) > 0) {
-        //         @b = unpack("QCQQvvC", $s);
-        //         $s = substr($s, 0x1e);
-        //
-        //         my $name = substr($s, 0, $b[5]);
-        //         $s = substr($s, $b[5]);
-        //
-        //         my $name2 = substr($s, 0, $b[4]);
-        //         $s = substr($s, $b[4]);
-        //
-        //         printf(" key=%x,%x,%x transid=%x m=%x n=%x type=%x name=%s%s", $b[0], $b[1], $b[2], $b[3], $b[4], $b[5], $b[6], $name, $name2 eq "" ? "" : (" name2=" . $name2));
-        //     }
+
+        case XATTR_ITEM: {
+            cout << "xattr_item";
+
+            do {
+                const auto& di = *(btrfs::dir_item*)s.data();
+
+                cout << format(" {}", di);
+
+                s = s.subspan(sizeof(btrfs::dir_item) + di.data_len + di.name_len);
+            } while (!s.empty());
+
+            break;
+        };
+
         // } elsif ($type == 0x24) { # VERITY_DESC_ITEM
         //     printf("verity_desc_item");
         //
