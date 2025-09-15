@@ -500,6 +500,14 @@ struct inode_ref {
     le16 name_len;
 } __attribute__ ((__packed__));
 
+struct dir_item {
+    key location;
+    le64 transid;
+    le16 data_len;
+    le16 name_len;
+    uint8_t type;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -1593,5 +1601,24 @@ struct std::formatter<btrfs::inode_ref> {
         return format_to(ctx.out(), "index={:x} name_len={:x} name={}",
                          ir.index, ir.name_len,
                          string_view((char*)&ir + sizeof(btrfs::inode_ref), ir.name_len));
+    }
+};
+
+template<>
+struct std::formatter<btrfs::dir_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::dir_item& di, format_context& ctx) const {
+        return format_to(ctx.out(), "location={:x} transid={:x} data_len={:x} name_len={:x} type={:x} name={}",
+                         di.location, di.transid, di.data_len, di.name_len, di.type,
+                         string_view((char*)&di + sizeof(btrfs::dir_item), di.name_len));
     }
 };
