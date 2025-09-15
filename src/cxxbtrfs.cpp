@@ -1396,3 +1396,21 @@ struct std::formatter<btrfs::inode_item> {
                          ii.rdev, ii.flags, ii.sequence, ii.atime, ii.ctime, ii.mtime, ii.otime);
     }
 };
+
+template<>
+struct std::formatter<btrfs::root_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::root_item& ri, format_context& ctx) const {
+        return format_to(ctx.out(), "{}; generation={:x} root_dirid={:x} bytenr={:x} byte_limit={:x} bytes_used={:x} last_snapshot={:x} flags={:x} refs={:x} drop_progress={} drop_level={:x} level={:x} generation_v2={:x} uuid={} parent_uuid={} received_uuid={} ctransid={:x} otransid={:x} stransid={:x} rtransid={:x} ctime={} otime={} stime={} rtime={}",
+                         ri.inode, ri.generation, ri.root_dirid, ri.bytenr, ri.byte_limit, ri.bytes_used, ri.last_snapshot, ri.flags, ri.refs, ri.drop_progress, ri.drop_level, ri.level, ri.generation_v2, ri.uuid, ri.parent_uuid, ri.received_uuid, ri.ctransid, ri.otransid, ri.stransid, ri.rtransid, ri.ctime, ri.otime, ri.stime, ri.rtime);
+    }
+};

@@ -118,34 +118,9 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
 
     switch (key.type) {
         case btrfs::key_type::INODE_ITEM: {
-        // case btrfs::key_type::ROOT_ITEM:
             const auto& ii = *(btrfs::inode_item*)s.data();
 
-        //     @b = unpack("QQQQQVVVVQQQx32QVQVQVQV", $s);
-        //     $s = substr($s, 0xa0);
-        //
-        //     if ($type == 0x84) {
-        //         print "root_item";
-        //     } else {
-        //         print "inode_item";
-        //     }
-
             cout << format("inode_item {}", ii);
-        //
-        //     printf(" gen=%x transid=%x size=%x blocks=%x blockgroup=%x nlink=%x uid=%x gid=%x mode=%o rdev=%x flags=%s seq=%x atime=%s ctime=%s mtime=%s otime=%s", $b[0], $b[1], $b[2], $b[3], $b[4], $b[5], $b[6], $b[7], $b[8], $b[9], inode_flags($b[10]), $b[11], format_time($b[12], $b[13]), format_time($b[14], $b[15]), format_time($b[16], $b[17]), format_time($b[18], $b[19]));
-        //
-        //     if ($type != 0x1) {
-        //         @b = unpack("QQQQQQQVQCQCC", $s);
-        //         $s = substr($s, 0x4f);
-        //
-        //         #print Dumper(@b)."\n";
-        //         printf("; expgen=%x objid=%x blocknum=%x bytelimit=%x bytesused=%x snapshotgen=%x flags=%x numrefs=%x dropprogress=%x,%x,%x droplevel=%x rootlevel=%x", @b);
-        //
-        //         @b = unpack("Qa16a16a16QQQQQVQVQVQV", $s);
-        //         $s = substr($s, 0xc8); # above + 64 blank bytes
-        //
-        //         printf(" gen2=%x uuid=%s par_uuid=%s rec_uuid=%s ctransid=%x otransid=%x stransid=%x rtransid=%x ctime=%s otime=%s stime=%s rtime=%s", $b[0], format_uuid($b[1]), format_uuid($b[2]), format_uuid($b[3]), $b[4], $b[5], $b[6], $b[7], format_time($b[8], $b[9]), format_time($b[10], $b[11]), format_time($b[12], $b[13]), format_time($b[14], $b[15]));
-        //     }
 
             s = s.subspan(sizeof(btrfs::inode_item));
 
@@ -249,6 +224,30 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //             $s = substr($s, 4);
         //         }
         //     }
+
+        case btrfs::key_type::ROOT_ITEM: {
+            const auto& ri = *(btrfs::root_item*)s.data();
+
+            cout << format("root_item {}", ri);
+
+        //     if ($type != 0x1) {
+        //         @b = unpack("QQQQQQQVQCQCC", $s);
+        //         $s = substr($s, 0x4f);
+        //
+        //         #print Dumper(@b)."\n";
+        //         printf("; expgen=%x objid=%x blocknum=%x bytelimit=%x bytesused=%x snapshotgen=%x flags=%x numrefs=%x dropprogress=%x,%x,%x droplevel=%x rootlevel=%x", @b);
+        //
+        //         @b = unpack("Qa16a16a16QQQQQVQVQVQV", $s);
+        //         $s = substr($s, 0xc8); # above + 64 blank bytes
+        //
+        //         printf(" gen2=%x uuid=%s par_uuid=%s rec_uuid=%s ctransid=%x otransid=%x stransid=%x rtransid=%x ctime=%s otime=%s stime=%s rtime=%s", $b[0], format_uuid($b[1]), format_uuid($b[2]), format_uuid($b[3]), $b[4], $b[5], $b[6], $b[7], format_time($b[8], $b[9]), format_time($b[10], $b[11]), format_time($b[12], $b[13]), format_time($b[14], $b[15]));
+        //     }
+
+            s = s.subspan(sizeof(btrfs::root_item));
+
+            break;
+        }
+
         // } elsif ($type == 0x90 || $type == 0x9c) { # ROOT_BACKREF or ROOT_REF
         //     @b = unpack("QQv", $s);
         //     $s = substr($s, 18);
