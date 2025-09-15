@@ -383,11 +383,16 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //     printf("extent_ref_v0 root=%x gen=%x objid=%x count=%x", @b);
         // } elsif ($type == 0xb6) { # SHARED_BLOCK_REF
         //     printf("shared_block_ref ");
-        // } elsif ($type == 0xb8) { # SHARED_DATA_REF
-        //     @b = unpack("v", $s);
-        //     $s = substr($s, 4);
-        //
-        //     printf("shared_data_ref count=%x", @b);
+
+        case SHARED_DATA_REF: {
+            const auto& sdr = *(btrfs::shared_data_ref*)s.data();
+
+            cout << format("shared_data_ref {}", sdr);
+
+            s = s.subspan(sizeof(btrfs::shared_data_ref));
+
+            break;
+        }
 
         case BLOCK_GROUP_ITEM: {
             const auto& bgi = *(btrfs::block_group_item*)s.data();

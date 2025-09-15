@@ -567,6 +567,10 @@ struct extent_data_ref {
     le32 count;
 } __attribute__ ((__packed__));
 
+struct shared_data_ref {
+    le32 count;
+} __attribute__ ((__packed__));
+
 enum class file_extent_item_type : uint8_t {
     inline_extent = 0,
     reg = 1,
@@ -1932,6 +1936,23 @@ struct std::formatter<btrfs::extent_data_ref> {
     auto format(const btrfs::extent_data_ref& edr, format_context& ctx) const {
         return format_to(ctx.out(), "root={:x} objectid={:x} offset={:x} count={:x}",
                          edr.root, edr.objectid, edr.offset, edr.count);
+    }
+};
+
+template<>
+struct std::formatter<btrfs::shared_data_ref> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::shared_data_ref& sdr, format_context& ctx) const {
+        return format_to(ctx.out(), "count={:x}", sdr.count);
     }
 };
 
