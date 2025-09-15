@@ -178,21 +178,21 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                 break;
             };
 
-            // } elsif ($type == 0x24) { # VERITY_DESC_ITEM
-            //     printf("verity_desc_item");
-            //
-            //     if ($off == 0) {
-            //         @b = unpack("Qx16C", $s);
-            //         $s = substr($s, 25);
-            //
-            //         printf(" size=%x enc=%x", $b[0], $b[1]);
-            //     } else {
-            //         while (length($s) > 0) {
-            //             @b = unpack("C", $s);
-            //             printf(" %02x", $b[0]);
-            //             $s = substr($s, 1);
-            //         }
-            //     }
+            case VERITY_DESC_ITEM: {
+                cout << "verity_desc_item";
+
+                if (key.offset == 0) {
+                    const auto& vdi = *(btrfs::verity_descriptor_item*)s.data();
+
+                    cout << format(" {}", vdi);
+                    s = s.subspan(sizeof(btrfs::verity_descriptor_item));
+                } else {
+                    // FIXME
+                }
+
+                break;
+            }
+
             // } elsif ($type == 0x25) { # VERITY_MERKLE_ITEM
             //     while (length($s) > 0) {
             //         @b = unpack("NNNNNNNN", $s);

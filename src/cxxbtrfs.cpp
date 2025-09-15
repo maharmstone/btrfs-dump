@@ -618,6 +618,12 @@ struct free_space_header {
     le64 num_bitmaps;
 } __attribute__ ((__packed__));
 
+struct verity_descriptor_item {
+    le64 size;
+    le64 reserved[2];
+    uint8_t encryption;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -2109,5 +2115,23 @@ struct std::formatter<btrfs::free_space_header> {
         return format_to(ctx.out(), "location=({:x}) generation={:x} num_entries={:x} num_bitmaps={:x}",
                          fsh.location, fsh.generation, fsh.num_entries,
                          fsh.num_bitmaps);
+    }
+};
+
+template<>
+struct std::formatter<btrfs::verity_descriptor_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::verity_descriptor_item& vdi, format_context& ctx) const {
+        return format_to(ctx.out(), "size={:x} encryption={:x}",
+                         vdi.size, vdi.encryption);
     }
 };
