@@ -479,6 +479,11 @@ struct remap {
     le64 address;
 } __attribute__ ((__packed__));
 
+struct inode_ref {
+    le64 index;
+    le16 name_len;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -670,9 +675,9 @@ struct std::formatter<btrfs::key> {
     template<typename format_context>
     auto format(const btrfs::key& k, format_context& ctx) const {
         if (no_translate)
-            return format_to(ctx.out(), "({:x},{:x},{:x})", k.objectid, (uint8_t)k.type, k.offset);
+            return format_to(ctx.out(), "{:x},{:x},{:x}", k.objectid, (uint8_t)k.type, k.offset);
         else
-            return format_to(ctx.out(), "({:x},{},{:x})", k.objectid, k.type, k.offset);
+            return format_to(ctx.out(), "{:x},{},{:x}", k.objectid, k.type, k.offset);
     }
 
     bool no_translate = false;
@@ -1430,5 +1435,24 @@ struct std::formatter<btrfs::root_item> {
     auto format(const btrfs::root_item& ri, format_context& ctx) const {
         return format_to(ctx.out(), "{}; generation={:x} root_dirid={:x} bytenr={:x} byte_limit={:x} bytes_used={:x} last_snapshot={:x} flags={:x} refs={:x} drop_progress={} drop_level={:x} level={:x} generation_v2={:x} uuid={} parent_uuid={} received_uuid={} ctransid={:x} otransid={:x} stransid={:x} rtransid={:x} ctime={} otime={} stime={} rtime={}",
                          ri.inode, ri.generation, ri.root_dirid, ri.bytenr, ri.byte_limit, ri.bytes_used, ri.last_snapshot, ri.flags, ri.refs, ri.drop_progress, ri.drop_level, ri.level, ri.generation_v2, ri.uuid, ri.parent_uuid, ri.received_uuid, ri.ctransid, ri.otransid, ri.stransid, ri.rtransid, ri.ctime, ri.otime, ri.stime, ri.rtime);
+    }
+};
+
+template<>
+struct std::formatter<btrfs::inode_ref> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::inode_ref& ir, format_context& ctx) const {
+        return format_to(ctx.out(), "index={:x} name_len={:x} name={}",
+                         ir.index, ir.name_len,
+                         string_view((char*)&ir + sizeof(btrfs::inode_ref), ir.name_len));
     }
 };

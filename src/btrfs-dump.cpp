@@ -117,7 +117,9 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
     cout << pref;
 
     switch (key.type) {
-        case btrfs::key_type::INODE_ITEM: {
+        using enum btrfs::key_type;
+
+        case INODE_ITEM: {
             const auto& ii = *(btrfs::inode_item*)s.data();
 
             cout << format("inode_item {}", ii);
@@ -126,17 +128,21 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
 
             break;
         }
-        // } elsif ($type == 0xc) { # INODE_REF
-        //     printf("inode_ref");
-        //
-        //     do {
-        //         @b = unpack("Qv", $s);
-        //         $s = substr($s, 0xa);
-        //         my $name = substr($s, 0, $b[1]);
-        //         $s = substr($s, $b[1]);
-        //
-        //         printf(" index=%x n=%x name=%s", $b[0], $b[1], $name);
-        //     } while (length($s) > 0);
+
+        case INODE_REF: {
+            cout << "inode_ref";
+
+            do {
+                const auto& ir = *(btrfs::inode_ref*)s.data();
+
+                cout << format(" {}", ir);
+
+                s = s.subspan(sizeof(btrfs::inode_ref) + ir.name_len);
+            } while (!s.empty());
+
+            break;
+        }
+
         // } elsif ($type == 0xd) { # INODE_EXTREF
         //     printf("inode_extref");
         //
@@ -225,7 +231,7 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //         }
         //     }
 
-        case btrfs::key_type::ROOT_ITEM: {
+        case ROOT_ITEM: {
             const auto& ri = *(btrfs::root_item*)s.data();
 
             cout << format("root_item {}", ri);
@@ -343,7 +349,7 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         //     $s = substr($s, 0x30);
         //     printf("dev_extent chunktree=%x, chunkobjid=%x, logaddr=%x, size=%x, chunktreeuuid=%s", $b[0], $b[1], $b[2], $b[3], format_uuid($b[4]));
 
-        case btrfs::key_type::DEV_ITEM: {
+        case DEV_ITEM: {
             const auto& d = *(btrfs::dev_item*)s.data();
 
             cout << format("dev_item {}", d);
@@ -352,7 +358,7 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             break;
         }
 
-        case btrfs::key_type::CHUNK_ITEM: {
+        case CHUNK_ITEM: {
             const auto& c = *(btrfs::chunk*)s.data();
 
             cout << format("chunk_item {}", c);
