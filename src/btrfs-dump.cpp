@@ -356,6 +356,8 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             break;
         }
 
+        // FIXME - EXTENT_OWNER_REF
+
         // } elsif ($type == 0xb0) { # TREE_BLOCK_REF
         //     printf("tree_block_ref ");
         // } elsif ($type == 0xb2) { # EXTENT_DATA_REF
@@ -429,6 +431,8 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             break;
         }
 
+        // FIXME - RAID_STRIPE
+
         // } elsif ($type == 0xf0) { # QGROUP_STATUS
         //     @b = unpack("QQQQQ", $s);
         //     printf("qgroup_status version=%x generation=%x flags=%s rescan=%x enable_gen=%x", $b[0], $b[1], qgroup_status_flags($b[2]), $b[3], $b[4]);
@@ -488,6 +492,8 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             break;
         }
 
+        // FIXME - DEV_REPLACE
+
         case UUID_SUBVOL: {
             auto num = *(btrfs::le64*)s.data();
 
@@ -505,6 +511,8 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             s = s.subspan(sizeof(num));
             break;
         }
+
+        // FIXME - STRING_ITEM
 
         // } elsif ($type == 0 && $id == 0xfffffffffffffff5) { # free space
         //     @b = unpack("QCQQQQ", $s);
