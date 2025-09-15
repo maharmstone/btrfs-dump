@@ -540,6 +540,13 @@ struct tree_block_info {
     uint8_t level;
 } __attribute__ ((__packed__));
 
+struct extent_data_ref {
+    le64 root;
+    le64 objectid;
+    le64 offset;
+    le32 count;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -1783,5 +1790,23 @@ struct std::formatter<btrfs::tree_block_info> {
     auto format(const btrfs::tree_block_info& tbi, format_context& ctx) const {
         return format_to(ctx.out(), "key={:x} level={:x}",
                          tbi.key, tbi.level);
+    }
+};
+
+template<>
+struct std::formatter<btrfs::extent_data_ref> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::extent_data_ref& edr, format_context& ctx) const {
+        return format_to(ctx.out(), "root={:x} objectid={:x} offset={:x} count={:x}",
+                         edr.root, edr.objectid, edr.offset, edr.count);
     }
 };

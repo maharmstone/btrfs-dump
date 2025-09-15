@@ -297,7 +297,15 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                     break;
 
                     // FIXME - SHARED_BLOCK_REF
-                    // FIXME - EXTENT_DATA_REF
+
+                    case EXTENT_DATA_REF: {
+                        const auto& edr = *(btrfs::extent_data_ref*)&eir.offset;
+
+                        cout << format(" extent_data_ref {}", edr);
+                        s = s.subspan(sizeof(btrfs::extent_data_ref) - sizeof(btrfs::le64));
+                        break;
+                    }
+
                     // FIXME - SHARED_DATA_REF
                     // FIXME - EXTENT_OWNER_REF
 
