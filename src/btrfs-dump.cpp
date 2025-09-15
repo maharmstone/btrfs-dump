@@ -365,10 +365,17 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
 
         // } elsif ($type == 0xb0) { # TREE_BLOCK_REF
         //     printf("tree_block_ref ");
-        // } elsif ($type == 0xb2) { # EXTENT_DATA_REF
-        //     @b = unpack("QQQv", $s);
-        //     $s = substr($s, 28);
-        //     printf("extent_data_ref root=%x objid=%x offset=%x count=%x ", @b);
+
+        case EXTENT_DATA_REF: {
+            const auto& edr = *(btrfs::extent_data_ref*)s.data();
+
+            cout << format("extent_data_ref {}", edr);
+
+            s = s.subspan(sizeof(btrfs::extent_data_ref));
+
+            break;
+        }
+
         // } elsif ($type == 0xb4) { # EXTENT_REF_V0
         //     @b = unpack("QQQv", $s);
         //     $s = substr($s, 28);
