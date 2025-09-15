@@ -611,6 +611,13 @@ struct root_ref {
     le16 name_len;
 } __attribute__ ((__packed__));
 
+struct free_space_header {
+    btrfs::key location;
+    le64 generation;
+    le64 num_entries;
+    le64 num_bitmaps;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -2083,5 +2090,24 @@ struct std::formatter<btrfs::root_ref> {
         return format_to(ctx.out(), "dirid={:x} sequence={:x} name_len={:x} name={}",
                          rr.dirid, rr.sequence, rr.name_len,
                          string_view((char*)&rr + sizeof(btrfs::root_ref), rr.name_len));
+    }
+};
+
+template<>
+struct std::formatter<btrfs::free_space_header> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::free_space_header& fsh, format_context& ctx) const {
+        return format_to(ctx.out(), "location=({:x}) generation={:x} num_entries={:x} num_bitmaps={:x}",
+                         fsh.location, fsh.generation, fsh.num_entries,
+                         fsh.num_bitmaps);
     }
 };

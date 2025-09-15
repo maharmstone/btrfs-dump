@@ -116,433 +116,434 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
 
     cout << pref;
 
-    switch (key.type) {
-        using enum btrfs::key_type;
+    if ((uint8_t)key.type == 0 && key.objectid == btrfs::FREE_SPACE_OBJECTID) {
+        const auto& fsh = *(btrfs::free_space_header*)s.data();
 
-        case INODE_ITEM: {
-            const auto& ii = *(btrfs::inode_item*)s.data();
+        cout << format("free_space {}", fsh);
 
-            cout << format("inode_item {}", ii);
+        s = s.subspan(sizeof(btrfs::free_space_header));
+    } else {
+        switch (key.type) {
+            using enum btrfs::key_type;
 
-            s = s.subspan(sizeof(btrfs::inode_item));
+            case INODE_ITEM: {
+                const auto& ii = *(btrfs::inode_item*)s.data();
 
-            break;
-        }
+                cout << format("inode_item {}", ii);
 
-        case INODE_REF: {
-            cout << "inode_ref";
+                s = s.subspan(sizeof(btrfs::inode_item));
 
-            do {
-                const auto& ir = *(btrfs::inode_ref*)s.data();
-
-                cout << format(" {}", ir);
-
-                s = s.subspan(sizeof(btrfs::inode_ref) + ir.name_len);
-            } while (!s.empty());
-
-            break;
-        }
-
-        case INODE_EXTREF: {
-            cout << "inode_extref";
-
-            do {
-                const auto& ier = *(btrfs::inode_extref*)s.data();
-
-                cout << format(" {}", ier);
-
-                s = s.subspan(offsetof(btrfs::inode_extref, name) + ier.name_len);
-            } while (!s.empty());
-
-            break;
-        }
-
-        case XATTR_ITEM: {
-            cout << "xattr_item";
-
-            do {
-                const auto& di = *(btrfs::dir_item*)s.data();
-
-                cout << format(" {}", di);
-
-                s = s.subspan(sizeof(btrfs::dir_item) + di.data_len + di.name_len);
-            } while (!s.empty());
-
-            break;
-        };
-
-        // } elsif ($type == 0x24) { # VERITY_DESC_ITEM
-        //     printf("verity_desc_item");
-        //
-        //     if ($off == 0) {
-        //         @b = unpack("Qx16C", $s);
-        //         $s = substr($s, 25);
-        //
-        //         printf(" size=%x enc=%x", $b[0], $b[1]);
-        //     } else {
-        //         while (length($s) > 0) {
-        //             @b = unpack("C", $s);
-        //             printf(" %02x", $b[0]);
-        //             $s = substr($s, 1);
-        //         }
-        //     }
-        // } elsif ($type == 0x25) { # VERITY_MERKLE_ITEM
-        //     while (length($s) > 0) {
-        //         @b = unpack("NNNNNNNN", $s);
-        //         printf(" %008x%008x%008x%008x%008x%008x%008x%008x", $b[0], $b[1], $b[2], $b[3], $b[4], $b[5], $b[6], $b[7]);
-        //         $s = substr($s, 32);
-        //     }
-        // } elsif ($type == 0x30) { # ORPHAN_ITEM
-        //     printf("orphan_item");
-        // } elsif ($type == 0x48) { # LOG_INDEX
-        //     @b = unpack("Q", $s);
-        //     $s = substr($s, 8);
-        //
-        //     printf("log_index end=%x", $b[0]);
-
-        case DIR_ITEM: {
-            cout << "dir_item";
-
-            do {
-                const auto& di = *(btrfs::dir_item*)s.data();
-
-                cout << format(" {}", di);
-
-                s = s.subspan(sizeof(btrfs::dir_item) + di.data_len + di.name_len);
-            } while (!s.empty());
-
-            break;
-        }
-
-        case DIR_INDEX: {
-            const auto& di = *(btrfs::dir_item*)s.data();
-
-            cout << format("dir_index {}", di);
-
-            s = s.subspan(sizeof(btrfs::dir_item) + di.data_len + di.name_len);
-
-            break;
-        }
-
-        case EXTENT_DATA: {
-            const auto& fei = *(btrfs::file_extent_item*)s.data();
-
-            cout << format("extent_data {}", fei);
-
-            if (fei.type == btrfs::file_extent_item_type::inline_extent) {
-                s = s.subspan(offsetof(btrfs::file_extent_item, disk_bytenr));
-                s = s.subspan(fei.ram_bytes);
-            } else
-                s = s.subspan(sizeof(btrfs::file_extent_item));
-
-            break;
-        }
-
-        case EXTENT_CSUM: {
-            cout << format("extent_csum");
-
-            switch (sb.csum_type) {
-                case btrfs::csum_type::CRC32: {
-                    auto nums = span((btrfs::le32*)s.data(), s.size() / sizeof(btrfs::le32));
-
-                    for (auto n : nums) {
-                        cout << format(" {:08x}", n);
-                    }
-
-                    s = s.subspan(nums.size_bytes());
-                    break;
-                }
-
-                case btrfs::csum_type::XXHASH: {
-                    auto nums = span((btrfs::le64*)s.data(), s.size() / sizeof(btrfs::le64));
-
-                    for (auto n : nums) {
-                        cout << format(" {:016x}", n);
-                    }
-
-                    s = s.subspan(nums.size_bytes());
-                    break;
-                }
-
-                case btrfs::csum_type::SHA256:
-                case btrfs::csum_type::BLAKE2: {
-                    using arr = array<btrfs::le64, 4>;
-                    auto nums = span((arr*)s.data(), s.size() / sizeof(arr));
-
-                    for (auto n : nums) {
-                        cout << format(" {:016x}{:016x}{:016x}{:016x}",
-                                       n[0], n[1], n[2], n[3]);
-                    }
-
-                    s = s.subspan(nums.size_bytes());
-                    break;
-                }
+                break;
             }
 
-            break;
-        }
+            case INODE_REF: {
+                cout << "inode_ref";
 
-        case ROOT_ITEM: {
-            const auto& ri = *(btrfs::root_item*)s.data();
+                do {
+                    const auto& ir = *(btrfs::inode_ref*)s.data();
 
-            cout << format("root_item {}", ri);
+                    cout << format(" {}", ir);
 
-            s = s.subspan(sizeof(btrfs::root_item));
+                    s = s.subspan(sizeof(btrfs::inode_ref) + ir.name_len);
+                } while (!s.empty());
 
-            break;
-        }
-
-        case ROOT_BACKREF:
-        case ROOT_REF: {
-            const auto& rr = *(btrfs::root_ref*)s.data();
-
-            cout << format("{} {}", key.type == ROOT_BACKREF ? "root_backref" : "root_ref",
-                           rr);
-
-            s = s.subspan(sizeof(btrfs::root_ref) + rr.name_len);
-
-            break;
-        }
-
-        case EXTENT_ITEM:
-        case METADATA_ITEM: {
-            const auto& ei = *(btrfs::extent_item*)s.data();
-
-            if (key.type == METADATA_ITEM)
-                cout << format("metadata_item {}", ei);
-            else
-                cout << format("extent_item {}", ei);
-
-            // FIXME - EXTENT_ITEM_V0(?)
-
-            s = s.subspan(sizeof(btrfs::extent_item));
-
-            if (key.type == EXTENT_ITEM && ei.flags & btrfs::EXTENT_FLAG_TREE_BLOCK) {
-                const auto& tbi = *(btrfs::tree_block_info*)s.data();
-
-                cout << format(" {}", tbi);
-                s = s.subspan(sizeof(btrfs::tree_block_info));
+                break;
             }
 
-            while (s.size() >= sizeof(btrfs::extent_inline_ref)) {
-                bool handled = true;
-                const auto& eir = *(btrfs::extent_inline_ref*)s.data();
+            case INODE_EXTREF: {
+                cout << "inode_extref";
 
-                s = s.subspan(sizeof(btrfs::extent_inline_ref));
+                do {
+                    const auto& ier = *(btrfs::inode_extref*)s.data();
 
-                switch (eir.type) {
-                    case TREE_BLOCK_REF:
-                        cout << format(" tree_block_ref root={:x}", eir.offset);
-                    break;
+                    cout << format(" {}", ier);
 
-                    // FIXME - SHARED_BLOCK_REF
+                    s = s.subspan(offsetof(btrfs::inode_extref, name) + ier.name_len);
+                } while (!s.empty());
 
-                    case EXTENT_DATA_REF: {
-                        const auto& edr = *(btrfs::extent_data_ref*)&eir.offset;
+                break;
+            }
 
-                        cout << format(" extent_data_ref {}", edr);
-                        s = s.subspan(sizeof(btrfs::extent_data_ref) - sizeof(btrfs::le64));
+            case XATTR_ITEM: {
+                cout << "xattr_item";
+
+                do {
+                    const auto& di = *(btrfs::dir_item*)s.data();
+
+                    cout << format(" {}", di);
+
+                    s = s.subspan(sizeof(btrfs::dir_item) + di.data_len + di.name_len);
+                } while (!s.empty());
+
+                break;
+            };
+
+            // } elsif ($type == 0x24) { # VERITY_DESC_ITEM
+            //     printf("verity_desc_item");
+            //
+            //     if ($off == 0) {
+            //         @b = unpack("Qx16C", $s);
+            //         $s = substr($s, 25);
+            //
+            //         printf(" size=%x enc=%x", $b[0], $b[1]);
+            //     } else {
+            //         while (length($s) > 0) {
+            //             @b = unpack("C", $s);
+            //             printf(" %02x", $b[0]);
+            //             $s = substr($s, 1);
+            //         }
+            //     }
+            // } elsif ($type == 0x25) { # VERITY_MERKLE_ITEM
+            //     while (length($s) > 0) {
+            //         @b = unpack("NNNNNNNN", $s);
+            //         printf(" %008x%008x%008x%008x%008x%008x%008x%008x", $b[0], $b[1], $b[2], $b[3], $b[4], $b[5], $b[6], $b[7]);
+            //         $s = substr($s, 32);
+            //     }
+            // } elsif ($type == 0x30) { # ORPHAN_ITEM
+            //     printf("orphan_item");
+            // } elsif ($type == 0x48) { # LOG_INDEX
+            //     @b = unpack("Q", $s);
+            //     $s = substr($s, 8);
+            //
+            //     printf("log_index end=%x", $b[0]);
+
+            case DIR_ITEM: {
+                cout << "dir_item";
+
+                do {
+                    const auto& di = *(btrfs::dir_item*)s.data();
+
+                    cout << format(" {}", di);
+
+                    s = s.subspan(sizeof(btrfs::dir_item) + di.data_len + di.name_len);
+                } while (!s.empty());
+
+                break;
+            }
+
+            case DIR_INDEX: {
+                const auto& di = *(btrfs::dir_item*)s.data();
+
+                cout << format("dir_index {}", di);
+
+                s = s.subspan(sizeof(btrfs::dir_item) + di.data_len + di.name_len);
+
+                break;
+            }
+
+            case EXTENT_DATA: {
+                const auto& fei = *(btrfs::file_extent_item*)s.data();
+
+                cout << format("extent_data {}", fei);
+
+                if (fei.type == btrfs::file_extent_item_type::inline_extent) {
+                    s = s.subspan(offsetof(btrfs::file_extent_item, disk_bytenr));
+                    s = s.subspan(fei.ram_bytes);
+                } else
+                    s = s.subspan(sizeof(btrfs::file_extent_item));
+
+                break;
+            }
+
+            case EXTENT_CSUM: {
+                cout << format("extent_csum");
+
+                switch (sb.csum_type) {
+                    case btrfs::csum_type::CRC32: {
+                        auto nums = span((btrfs::le32*)s.data(), s.size() / sizeof(btrfs::le32));
+
+                        for (auto n : nums) {
+                            cout << format(" {:08x}", n);
+                        }
+
+                        s = s.subspan(nums.size_bytes());
                         break;
                     }
 
-                    // FIXME - SHARED_DATA_REF
-                    // FIXME - EXTENT_OWNER_REF
+                    case btrfs::csum_type::XXHASH: {
+                        auto nums = span((btrfs::le64*)s.data(), s.size() / sizeof(btrfs::le64));
 
-                    default:
-                        cout << format(" {:02x}", (uint8_t)eir.type);
-                        handled = false;
-                    break;
+                        for (auto n : nums) {
+                            cout << format(" {:016x}", n);
+                        }
+
+                        s = s.subspan(nums.size_bytes());
+                        break;
+                    }
+
+                    case btrfs::csum_type::SHA256:
+                    case btrfs::csum_type::BLAKE2: {
+                        using arr = array<btrfs::le64, 4>;
+                        auto nums = span((arr*)s.data(), s.size() / sizeof(arr));
+
+                        for (auto n : nums) {
+                            cout << format(" {:016x}{:016x}{:016x}{:016x}",
+                                        n[0], n[1], n[2], n[3]);
+                        }
+
+                        s = s.subspan(nums.size_bytes());
+                        break;
+                    }
                 }
 
-                if (!handled)
-                    break;
+                break;
             }
 
-            break;
-        }
+            case ROOT_ITEM: {
+                const auto& ri = *(btrfs::root_item*)s.data();
 
-        // FIXME - EXTENT_OWNER_REF
+                cout << format("root_item {}", ri);
 
-        // } elsif ($type == 0xb0) { # TREE_BLOCK_REF
-        //     printf("tree_block_ref ");
+                s = s.subspan(sizeof(btrfs::root_item));
 
-        case EXTENT_DATA_REF: {
-            const auto& edr = *(btrfs::extent_data_ref*)s.data();
-
-            cout << format("extent_data_ref {}", edr);
-
-            s = s.subspan(sizeof(btrfs::extent_data_ref));
-
-            break;
-        }
-
-        // } elsif ($type == 0xb4) { # EXTENT_REF_V0
-        //     @b = unpack("QQQv", $s);
-        //     $s = substr($s, 28);
-        //
-        //     printf("extent_ref_v0 root=%x gen=%x objid=%x count=%x", @b);
-        // } elsif ($type == 0xb6) { # SHARED_BLOCK_REF
-        //     printf("shared_block_ref ");
-
-        case SHARED_DATA_REF: {
-            const auto& sdr = *(btrfs::shared_data_ref*)s.data();
-
-            cout << format("shared_data_ref {}", sdr);
-
-            s = s.subspan(sizeof(btrfs::shared_data_ref));
-
-            break;
-        }
-
-        case BLOCK_GROUP_ITEM: {
-            const auto& bgi = *(btrfs::block_group_item*)s.data();
-
-            cout << format("block_group_item {}", bgi);
-
-            s = s.subspan(sizeof(btrfs::block_group_item));
-            break;
-        }
-
-        case FREE_SPACE_INFO: {
-            const auto& fsi = *(btrfs::free_space_info*)s.data();
-
-            cout << format("free_space_info {}", fsi);
-
-            s = s.subspan(sizeof(btrfs::free_space_info));
-            break;
-        }
-
-        case FREE_SPACE_EXTENT: {
-            cout << format("free_space_extent");
-            break;
-        }
-
-        // } elsif ($type == 0xc8) { # FREE_SPACE_BITMAP
-        //     printf("free_space_bitmap %s", free_space_bitmap($s, $id));
-        //     $s = "";
-
-        case DEV_EXTENT: {
-            const auto& de = *(btrfs::dev_extent*)s.data();
-
-            cout << format("dev_extent {}", de);
-
-            s = s.subspan(sizeof(btrfs::dev_extent));
-            break;
-        }
-
-        case DEV_ITEM: {
-            const auto& d = *(btrfs::dev_item*)s.data();
-
-            cout << format("dev_item {}", d);
-
-            s = s.subspan(sizeof(btrfs::dev_item));
-            break;
-        }
-
-        case CHUNK_ITEM: {
-            const auto& c = *(btrfs::chunk*)s.data();
-
-            cout << format("chunk_item {}", c);
-
-            s = s.subspan(offsetof(btrfs::chunk, stripe) + (c.num_stripes * sizeof(btrfs::stripe)));
-            break;
-        }
-
-        // FIXME - RAID_STRIPE
-
-        // } elsif ($type == 0xf0) { # QGROUP_STATUS
-        //     @b = unpack("QQQQQ", $s);
-        //     printf("qgroup_status version=%x generation=%x flags=%s rescan=%x enable_gen=%x", $b[0], $b[1], qgroup_status_flags($b[2]), $b[3], $b[4]);
-        //     $s = substr($s, 0x28);
-        // } elsif ($type == 0xf2) { # QGROUP_INFO
-        //     @b = unpack("QQQQQ", $s);
-        //     printf("qgroup_info generation=%x rfer=%x rfer_cmpr=%x excl=%x excl_cmpr=%x", $b[0], $b[1], $b[2], $b[3], $b[4]);
-        //     $s = substr($s, 0x28);
-        // } elsif ($type == 0xf4) { # QGROUP_LIMIT
-        //     @b = unpack("QQQQQ", $s);
-        //     printf("qgroup_limit flags=%x max_rfer=%x max_excl=%x rsv_rfer=%x rsv_excl=%x", $b[0], $b[1], $b[2], $b[3], $b[4]);
-        //     $s = substr($s, 0x28);
-        // } elsif ($type == 0xf6) { # QGROUP_RELATION
-        //     printf("qgroup_relation");
-        // } elsif ($type == 0xf8 && $id == 0xfffffffffffffffc) { # balance
-        //     my ($fl, @f);
-        //
-        //     @b = unpack("Q", $s);
-        //     $s = substr($s, 8);
-        //
-        //     $fl = $b[0];
-        //     @f = ();
-        //
-        //     if ($fl & (1 << 0)) {
-        //         push @f, "data";
-        //         $fl &= ~(1 << 0);
-        //     }
-        //
-        //     if ($fl & (1 << 1)) {
-        //         push @f, "system";
-        //         $fl &= ~(1 << 1);
-        //     }
-        //
-        //     if ($fl & (1 << 2)) {
-        //         push @f, "metadata";
-        //         $fl &= ~(1 << 2);
-        //     }
-        //
-        //     if ($fl != 0 || $#f == -1) {
-        //         push @f, $fl;
-        //     }
-        //
-        //     printf("balance flags=%s data=(%s) metadata=(%s) sys=(%s)", join(',', @f), format_balance(substr($s, 0, 0x88)), format_balance(substr($s, 0x88, 0x88)), format_balance(substr($s, 0x110, 0x88)));
-        //
-        //     $s = substr($s, 0x1b8);
-
-        case PERSISTENT_ITEM: {
-            auto nums = span((btrfs::le64*)s.data(), s.size() / sizeof(btrfs::le64));
-
-            cout << format("dev_stats");
-
-            for (auto n : nums) {
-                cout << format(" {:x}", n);
+                break;
             }
 
-            s = s.subspan(nums.size_bytes());
-            break;
+            case ROOT_BACKREF:
+            case ROOT_REF: {
+                const auto& rr = *(btrfs::root_ref*)s.data();
+
+                cout << format("{} {}", key.type == ROOT_BACKREF ? "root_backref" : "root_ref",
+                            rr);
+
+                s = s.subspan(sizeof(btrfs::root_ref) + rr.name_len);
+
+                break;
+            }
+
+            case EXTENT_ITEM:
+            case METADATA_ITEM: {
+                const auto& ei = *(btrfs::extent_item*)s.data();
+
+                if (key.type == METADATA_ITEM)
+                    cout << format("metadata_item {}", ei);
+                else
+                    cout << format("extent_item {}", ei);
+
+                // FIXME - EXTENT_ITEM_V0(?)
+
+                s = s.subspan(sizeof(btrfs::extent_item));
+
+                if (key.type == EXTENT_ITEM && ei.flags & btrfs::EXTENT_FLAG_TREE_BLOCK) {
+                    const auto& tbi = *(btrfs::tree_block_info*)s.data();
+
+                    cout << format(" {}", tbi);
+                    s = s.subspan(sizeof(btrfs::tree_block_info));
+                }
+
+                while (s.size() >= sizeof(btrfs::extent_inline_ref)) {
+                    bool handled = true;
+                    const auto& eir = *(btrfs::extent_inline_ref*)s.data();
+
+                    s = s.subspan(sizeof(btrfs::extent_inline_ref));
+
+                    switch (eir.type) {
+                        case TREE_BLOCK_REF:
+                            cout << format(" tree_block_ref root={:x}", eir.offset);
+                        break;
+
+                        // FIXME - SHARED_BLOCK_REF
+
+                        case EXTENT_DATA_REF: {
+                            const auto& edr = *(btrfs::extent_data_ref*)&eir.offset;
+
+                            cout << format(" extent_data_ref {}", edr);
+                            s = s.subspan(sizeof(btrfs::extent_data_ref) - sizeof(btrfs::le64));
+                            break;
+                        }
+
+                        // FIXME - SHARED_DATA_REF
+                        // FIXME - EXTENT_OWNER_REF
+
+                        default:
+                            cout << format(" {:02x}", (uint8_t)eir.type);
+                            handled = false;
+                        break;
+                    }
+
+                    if (!handled)
+                        break;
+                }
+
+                break;
+            }
+
+            // FIXME - EXTENT_OWNER_REF
+
+            // } elsif ($type == 0xb0) { # TREE_BLOCK_REF
+            //     printf("tree_block_ref ");
+
+            case EXTENT_DATA_REF: {
+                const auto& edr = *(btrfs::extent_data_ref*)s.data();
+
+                cout << format("extent_data_ref {}", edr);
+
+                s = s.subspan(sizeof(btrfs::extent_data_ref));
+
+                break;
+            }
+
+            // } elsif ($type == 0xb4) { # EXTENT_REF_V0
+            //     @b = unpack("QQQv", $s);
+            //     $s = substr($s, 28);
+            //
+            //     printf("extent_ref_v0 root=%x gen=%x objid=%x count=%x", @b);
+            // } elsif ($type == 0xb6) { # SHARED_BLOCK_REF
+            //     printf("shared_block_ref ");
+
+            case SHARED_DATA_REF: {
+                const auto& sdr = *(btrfs::shared_data_ref*)s.data();
+
+                cout << format("shared_data_ref {}", sdr);
+
+                s = s.subspan(sizeof(btrfs::shared_data_ref));
+
+                break;
+            }
+
+            case BLOCK_GROUP_ITEM: {
+                const auto& bgi = *(btrfs::block_group_item*)s.data();
+
+                cout << format("block_group_item {}", bgi);
+
+                s = s.subspan(sizeof(btrfs::block_group_item));
+                break;
+            }
+
+            case FREE_SPACE_INFO: {
+                const auto& fsi = *(btrfs::free_space_info*)s.data();
+
+                cout << format("free_space_info {}", fsi);
+
+                s = s.subspan(sizeof(btrfs::free_space_info));
+                break;
+            }
+
+            case FREE_SPACE_EXTENT: {
+                cout << format("free_space_extent");
+                break;
+            }
+
+            // } elsif ($type == 0xc8) { # FREE_SPACE_BITMAP
+            //     printf("free_space_bitmap %s", free_space_bitmap($s, $id));
+            //     $s = "";
+
+            case DEV_EXTENT: {
+                const auto& de = *(btrfs::dev_extent*)s.data();
+
+                cout << format("dev_extent {}", de);
+
+                s = s.subspan(sizeof(btrfs::dev_extent));
+                break;
+            }
+
+            case DEV_ITEM: {
+                const auto& d = *(btrfs::dev_item*)s.data();
+
+                cout << format("dev_item {}", d);
+
+                s = s.subspan(sizeof(btrfs::dev_item));
+                break;
+            }
+
+            case CHUNK_ITEM: {
+                const auto& c = *(btrfs::chunk*)s.data();
+
+                cout << format("chunk_item {}", c);
+
+                s = s.subspan(offsetof(btrfs::chunk, stripe) + (c.num_stripes * sizeof(btrfs::stripe)));
+                break;
+            }
+
+            // FIXME - RAID_STRIPE
+
+            // } elsif ($type == 0xf0) { # QGROUP_STATUS
+            //     @b = unpack("QQQQQ", $s);
+            //     printf("qgroup_status version=%x generation=%x flags=%s rescan=%x enable_gen=%x", $b[0], $b[1], qgroup_status_flags($b[2]), $b[3], $b[4]);
+            //     $s = substr($s, 0x28);
+            // } elsif ($type == 0xf2) { # QGROUP_INFO
+            //     @b = unpack("QQQQQ", $s);
+            //     printf("qgroup_info generation=%x rfer=%x rfer_cmpr=%x excl=%x excl_cmpr=%x", $b[0], $b[1], $b[2], $b[3], $b[4]);
+            //     $s = substr($s, 0x28);
+            // } elsif ($type == 0xf4) { # QGROUP_LIMIT
+            //     @b = unpack("QQQQQ", $s);
+            //     printf("qgroup_limit flags=%x max_rfer=%x max_excl=%x rsv_rfer=%x rsv_excl=%x", $b[0], $b[1], $b[2], $b[3], $b[4]);
+            //     $s = substr($s, 0x28);
+            // } elsif ($type == 0xf6) { # QGROUP_RELATION
+            //     printf("qgroup_relation");
+            // } elsif ($type == 0xf8 && $id == 0xfffffffffffffffc) { # balance
+            //     my ($fl, @f);
+            //
+            //     @b = unpack("Q", $s);
+            //     $s = substr($s, 8);
+            //
+            //     $fl = $b[0];
+            //     @f = ();
+            //
+            //     if ($fl & (1 << 0)) {
+            //         push @f, "data";
+            //         $fl &= ~(1 << 0);
+            //     }
+            //
+            //     if ($fl & (1 << 1)) {
+            //         push @f, "system";
+            //         $fl &= ~(1 << 1);
+            //     }
+            //
+            //     if ($fl & (1 << 2)) {
+            //         push @f, "metadata";
+            //         $fl &= ~(1 << 2);
+            //     }
+            //
+            //     if ($fl != 0 || $#f == -1) {
+            //         push @f, $fl;
+            //     }
+            //
+            //     printf("balance flags=%s data=(%s) metadata=(%s) sys=(%s)", join(',', @f), format_balance(substr($s, 0, 0x88)), format_balance(substr($s, 0x88, 0x88)), format_balance(substr($s, 0x110, 0x88)));
+            //
+            //     $s = substr($s, 0x1b8);
+
+            case PERSISTENT_ITEM: {
+                auto nums = span((btrfs::le64*)s.data(), s.size() / sizeof(btrfs::le64));
+
+                cout << format("dev_stats");
+
+                for (auto n : nums) {
+                    cout << format(" {:x}", n);
+                }
+
+                s = s.subspan(nums.size_bytes());
+                break;
+            }
+
+            // FIXME - DEV_REPLACE
+
+            case UUID_SUBVOL: {
+                auto num = *(btrfs::le64*)s.data();
+
+                cout << format("uuid_subvol {:x}", num);
+
+                s = s.subspan(sizeof(num));
+                break;
+            }
+
+            case UUID_RECEIVED_SUBVOL: {
+                auto num = *(btrfs::le64*)s.data();
+
+                cout << format("uuid_rec_subvol {:x}", num);
+
+                s = s.subspan(sizeof(num));
+                break;
+            }
+
+            // FIXME - STRING_ITEM
+
+            default:
+                cerr << format("ERROR - unknown type {} (size {:x})", key.type, s.size()) << endl;
+
+                cout << format("unknown (size={:x})", s.size());
+                unrecog = true;
         }
-
-        // FIXME - DEV_REPLACE
-
-        case UUID_SUBVOL: {
-            auto num = *(btrfs::le64*)s.data();
-
-            cout << format("uuid_subvol {:x}", num);
-
-            s = s.subspan(sizeof(num));
-            break;
-        }
-
-        case UUID_RECEIVED_SUBVOL: {
-            auto num = *(btrfs::le64*)s.data();
-
-            cout << format("uuid_rec_subvol {:x}", num);
-
-            s = s.subspan(sizeof(num));
-            break;
-        }
-
-        // FIXME - STRING_ITEM
-
-        // } elsif ($type == 0 && $id == 0xfffffffffffffff5) { # free space
-        //     @b = unpack("QCQQQQ", $s);
-        //     $s = substr($s, 0x29);
-        //
-        //     printf("free_space key=(%x,%x,%x) gen=%x num_entries=%x num_bitmaps=%x", @b);
-        // } else {
-
-        default:
-            cerr << format("ERROR - unknown type {} (size {:x})", key.type, s.size()) << endl;
-
-            cout << format("unknown (size={:x})", s.size());
-            unrecog = true;
     }
 
     if (!unrecog && !s.empty())
