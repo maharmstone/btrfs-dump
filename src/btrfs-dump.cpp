@@ -292,14 +292,17 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             break;
         }
 
-        // } elsif ($type == 0x90 || $type == 0x9c) { # ROOT_BACKREF or ROOT_REF
-        //     @b = unpack("QQv", $s);
-        //     $s = substr($s, 18);
-        //
-        //     my $name = substr($s, 0, $b[2]);
-        //     $s = substr($s, $b[2]);
-        //
-        //     printf("%s id=%x seq=%x n=%x name=%s", $type == 0x90 ? "root_backref" : "root_ref", $b[0], $b[1], $b[2], $name);
+        case ROOT_BACKREF:
+        case ROOT_REF: {
+            const auto& rr = *(btrfs::root_ref*)s.data();
+
+            cout << format("{} {}", key.type == ROOT_BACKREF ? "root_backref" : "root_ref",
+                           rr);
+
+            s = s.subspan(sizeof(btrfs::root_ref) + rr.name_len);
+
+            break;
+        }
 
         case EXTENT_ITEM:
         case METADATA_ITEM: {

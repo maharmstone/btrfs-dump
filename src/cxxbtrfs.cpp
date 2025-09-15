@@ -592,6 +592,12 @@ struct file_extent_item {
     le64 num_bytes;
 } __attribute__ ((__packed__));
 
+struct root_ref {
+    le64 dirid;
+    le64 sequence;
+    le16 name_len;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -2020,5 +2026,24 @@ struct std::formatter<btrfs::key_ptr> {
     auto format(const btrfs::key_ptr& p, format_context& ctx) const {
         return format_to(ctx.out(), "{:x} blockptr={:x} generation={:x}",
                          p.key, p.blockptr, p.generation);
+    }
+};
+
+template<>
+struct std::formatter<btrfs::root_ref> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::root_ref& rr, format_context& ctx) const {
+        return format_to(ctx.out(), "dirid={:x} sequence={:x} name_len={:x} name={}",
+                         rr.dirid, rr.sequence, rr.name_len,
+                         string_view((char*)&rr + sizeof(btrfs::root_ref), rr.name_len));
     }
 };
