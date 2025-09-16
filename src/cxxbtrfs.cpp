@@ -661,6 +661,14 @@ struct qgroup_status_item {
     le64 enable_gen;
 } __attribute__ ((__packed__));
 
+struct qgroup_info_item {
+    le64 generation;
+    le64 rfer;
+    le64 rfer_cmpr;
+    le64 excl;
+    le64 excl_cmpr;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -2334,5 +2342,24 @@ struct std::formatter<btrfs::qgroup_status_item> {
         return format_to(ctx.out(), "version={:x} generation={:x} flags={} rescan={:x} enable_gen={:x}",
                          qsi.version, qsi.generation, qgroup_status_flags(qsi.flags),
                          qsi.rescan, qsi.enable_gen);
+    }
+};
+
+template<>
+struct std::formatter<btrfs::qgroup_info_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::qgroup_info_item& qi, format_context& ctx) const {
+        return format_to(ctx.out(), "generation={:x} rfer={:x} rfer_cmpr={:x} excl={:x} excl_cmpr={:x}",
+                         qi.generation, qi.rfer, qi.rfer_cmpr, qi.excl,
+                         qi.excl_cmpr);
     }
 };

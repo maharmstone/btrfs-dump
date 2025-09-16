@@ -537,18 +537,23 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
             // FIXME - RAID_STRIPE
 
             case QGROUP_STATUS: {
-                const auto& d = *(btrfs::qgroup_status_item*)s.data();
+                const auto& qsi = *(btrfs::qgroup_status_item*)s.data();
 
-                cout << format("qgroup_status {}", d);
+                cout << format("qgroup_status {}", qsi);
 
                 s = s.subspan(sizeof(btrfs::qgroup_status_item));
                 break;
             }
 
-            // } elsif ($type == 0xf2) { # QGROUP_INFO
-            //     @b = unpack("QQQQQ", $s);
-            //     printf("qgroup_info generation=%x rfer=%x rfer_cmpr=%x excl=%x excl_cmpr=%x", $b[0], $b[1], $b[2], $b[3], $b[4]);
-            //     $s = substr($s, 0x28);
+            case QGROUP_INFO: {
+                const auto& qi = *(btrfs::qgroup_info_item*)s.data();
+
+                cout << format("qgroup_info {}", qi);
+
+                s = s.subspan(sizeof(btrfs::qgroup_info_item));
+                break;
+            }
+
             // } elsif ($type == 0xf4) { # QGROUP_LIMIT
             //     @b = unpack("QQQQQ", $s);
             //     printf("qgroup_limit flags=%x max_rfer=%x max_excl=%x rsv_rfer=%x rsv_excl=%x", $b[0], $b[1], $b[2], $b[3], $b[4]);
