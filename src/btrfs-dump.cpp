@@ -444,8 +444,6 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                 break;
             }
 
-            // FIXME - EXTENT_OWNER_REF
-
             case TREE_BLOCK_REF:
                 cout << "tree_block_ref";
                 break;
