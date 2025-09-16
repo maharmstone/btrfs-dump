@@ -222,6 +222,8 @@ constexpr uint64_t EXTENT_FLAG_DATA = 1 << 0;
 constexpr uint64_t EXTENT_FLAG_TREE_BLOCK = 1 << 1;
 constexpr uint64_t BLOCK_FLAG_FULL_BACKREF = 1 << 8;
 
+constexpr uint64_t ROOT_SUBVOL_DEAD = (uint64_t)1 << 48;
+
 struct uuid {
     array<uint8_t, 16> uuid;
 };
@@ -1700,6 +1702,22 @@ struct std::formatter<btrfs::inode_item> {
     }
 };
 
+string root_item_flags(uint64_t f) {
+    string ret;
+
+    if (f & btrfs::ROOT_SUBVOL_DEAD) {
+        ret = "dead";
+        f &= ~btrfs::ROOT_SUBVOL_DEAD;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
 template<>
 struct std::formatter<btrfs::root_item> {
     constexpr auto parse(format_parse_context& ctx) {
@@ -1713,8 +1731,8 @@ struct std::formatter<btrfs::root_item> {
 
     template<typename format_context>
     auto format(const btrfs::root_item& ri, format_context& ctx) const {
-        return format_to(ctx.out(), "{}; generation={:x} root_dirid={:x} bytenr={:x} byte_limit={:x} bytes_used={:x} last_snapshot={:x} flags={:x} refs={:x} drop_progress={} drop_level={:x} level={:x} generation_v2={:x} uuid={} parent_uuid={} received_uuid={} ctransid={:x} otransid={:x} stransid={:x} rtransid={:x} ctime={} otime={} stime={} rtime={}",
-                         ri.inode, ri.generation, ri.root_dirid, ri.bytenr, ri.byte_limit, ri.bytes_used, ri.last_snapshot, ri.flags, ri.refs, ri.drop_progress, ri.drop_level, ri.level, ri.generation_v2, ri.uuid, ri.parent_uuid, ri.received_uuid, ri.ctransid, ri.otransid, ri.stransid, ri.rtransid, ri.ctime, ri.otime, ri.stime, ri.rtime);
+        return format_to(ctx.out(), "{}; generation={:x} root_dirid={:x} bytenr={:x} byte_limit={:x} bytes_used={:x} last_snapshot={:x} flags={} refs={:x} drop_progress={} drop_level={:x} level={:x} generation_v2={:x} uuid={} parent_uuid={} received_uuid={} ctransid={:x} otransid={:x} stransid={:x} rtransid={:x} ctime={} otime={} stime={} rtime={}",
+                         ri.inode, ri.generation, ri.root_dirid, ri.bytenr, ri.byte_limit, ri.bytes_used, ri.last_snapshot, root_item_flags(ri.flags), ri.refs, ri.drop_progress, ri.drop_level, ri.level, ri.generation_v2, ri.uuid, ri.parent_uuid, ri.received_uuid, ri.ctransid, ri.otransid, ri.stransid, ri.rtransid, ri.ctime, ri.otime, ri.stime, ri.rtime);
     }
 };
 
