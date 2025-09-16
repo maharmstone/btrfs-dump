@@ -4,6 +4,7 @@
 #include <format>
 #include <map>
 #include <functional>
+#include <getopt.h>
 
 import cxxbtrfs;
 import formatted_error;
@@ -781,12 +782,48 @@ static void dump(const filesystem::path& fn) {
     }
 }
 
-int main() {
-    // FIXME - solicit filename
+int main(int argc, char** argv) {
+    bool print_usage = false;
+
     // FIXME - use libblkid to find other devices
 
+    while (true) {
+        enum {
+            GETOPT_VAL_HELP
+        };
+
+        static const option long_opts[] = {
+            { "help", no_argument, nullptr, GETOPT_VAL_HELP },
+            { nullptr, 0, nullptr, 0 }
+        };
+
+        auto c = getopt_long(argc, argv, "", long_opts, nullptr);
+        if (c < 0)
+            break;
+
+        switch (c) {
+            case GETOPT_VAL_HELP:
+            case '?':
+                print_usage = true;
+                break;
+        }
+    }
+
+    if (print_usage || optind != argc - 1) {
+        fprintf(stderr, R"(Usage: btrfs-dump <file>
+
+    Dump the metadata of a btrfs image in text format.
+
+    Options:
+    --help              print this screen
+)");
+        return 1;
+    }
+
+    auto fn = string_view(argv[optind]);
+
     try {
-        dump("test");
+        dump(fn);
     } catch (const exception& e) {
         cerr << "Exception: " << e.what() << endl;
     }
