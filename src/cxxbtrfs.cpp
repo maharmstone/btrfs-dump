@@ -643,6 +643,10 @@ struct fsverity_descriptor {
     uint8_t __reserved[144];
 } __attribute__ ((__packed__));
 
+struct dir_log_item {
+    le64 end;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -2235,5 +2239,22 @@ struct std::formatter<btrfs::fsverity_descriptor> {
         }
 
         return ret;
+    }
+};
+
+template<>
+struct std::formatter<btrfs::dir_log_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::dir_log_item& dli, format_context& ctx) const {
+        return format_to(ctx.out(), "end={:x}", dli.end);
     }
 };

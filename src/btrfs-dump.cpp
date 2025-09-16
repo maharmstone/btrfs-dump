@@ -262,11 +262,15 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                 cout << "orphan_item";
                 break;
 
-            // } elsif ($type == 0x48) { # LOG_INDEX
-            //     @b = unpack("Q", $s);
-            //     $s = substr($s, 8);
-            //
-            //     printf("log_index end=%x", $b[0]);
+            case DIR_LOG_INDEX: {
+                const auto& dli = *(btrfs::dir_log_item*)s.data();
+
+                cout << format("dir_log_index {}", dli);
+
+                s = s.subspan(sizeof(btrfs::dir_log_item));
+
+                break;
+            }
 
             case DIR_ITEM: {
                 cout << "dir_item";
