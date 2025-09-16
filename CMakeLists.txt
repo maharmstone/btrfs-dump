@@ -11,7 +11,8 @@ add_executable(btrfs-dump src/btrfs-dump.cpp)
 
 target_sources(btrfs-dump PUBLIC FILE_SET CXX_MODULES FILES
     src/cxxbtrfs.cpp
-    src/formatted_error.cpp)
+    src/formatted_error.cpp
+    src/b64.cpp)
 
 target_compile_options(btrfs-dump PUBLIC -Wall -Wextra -Wno-unqualified-std-cast-call -Wno-missing-field-initializers)
 

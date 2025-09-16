@@ -7,6 +7,7 @@
 
 import cxxbtrfs;
 import formatted_error;
+import b64;
 
 using namespace std;
 
@@ -189,6 +190,11 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
 
                     cout << format("fsverity_descriptor {}", desc);
                     s = s.subspan(sizeof(btrfs::fsverity_descriptor));
+
+                    if (!s.empty()) {
+                        cout << format(" sig={}", b64encode(s));
+                        s = s.subspan(s.size());
+                    }
                 }
 
                 break;
