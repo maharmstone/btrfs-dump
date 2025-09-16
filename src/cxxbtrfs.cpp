@@ -1904,8 +1904,8 @@ struct std::formatter<btrfs::free_space_info> {
 
     template<typename format_context>
     auto format(const btrfs::free_space_info& fsi, format_context& ctx) const {
-        return format_to(ctx.out(), "extent_count={:x} flags={:x}",
-                         fsi.extent_count, fsi.flags);
+        return format_to(ctx.out(), "extent_count={:x} flags={}",
+                         fsi.extent_count, free_space_info_flags(fsi.flags));
     }
 };
 
