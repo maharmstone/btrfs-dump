@@ -200,12 +200,21 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                 break;
             }
 
-            // } elsif ($type == 0x25) { # VERITY_MERKLE_ITEM
-            //     while (length($s) > 0) {
-            //         @b = unpack("NNNNNNNN", $s);
-            //         printf(" %008x%008x%008x%008x%008x%008x%008x%008x", $b[0], $b[1], $b[2], $b[3], $b[4], $b[5], $b[6], $b[7]);
-            //         $s = substr($s, 32);
-            //     }
+            case VERITY_MERKLE_ITEM: {
+                cout << "verity_merkle_item";
+
+                for (size_t i = 0; i < s.size(); i++) {
+                    if (i % 32 == 0)
+                        cout << " ";
+
+                    cout << format("{:02x}", s[i]);
+                }
+
+                s = s.subspan(s.size());
+
+                break;
+            }
+
             // } elsif ($type == 0x30) { # ORPHAN_ITEM
             //     printf("orphan_item");
             // } elsif ($type == 0x48) { # LOG_INDEX
