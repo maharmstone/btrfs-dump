@@ -368,7 +368,14 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                             break;
                         }
 
-                        // FIXME - SHARED_DATA_REF
+                        case SHARED_DATA_REF: {
+                            const auto& sdr = *(btrfs::shared_data_ref*)((uint8_t*)&eir + sizeof(btrfs::extent_inline_ref));
+
+                            cout << format(" shared_data_ref offset={:x} {}", eir.offset, sdr);
+                            s = s.subspan(sizeof(btrfs::shared_data_ref));
+                            break;
+                        }
+
                         // FIXME - EXTENT_OWNER_REF
 
                         default:
