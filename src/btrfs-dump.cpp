@@ -402,7 +402,9 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                             cout << format(" tree_block_ref root={:x}", eir.offset);
                         break;
 
-                        // FIXME - SHARED_BLOCK_REF
+                        case SHARED_BLOCK_REF:
+                            cout << format(" shared_block_ref offset={:x}", eir.offset);
+                        break;
 
                         case EXTENT_DATA_REF: {
                             const auto& edr = *(btrfs::extent_data_ref*)&eir.offset;
