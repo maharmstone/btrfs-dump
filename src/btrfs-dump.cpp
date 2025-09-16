@@ -427,7 +427,9 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                             break;
                         }
 
-                        // FIXME - EXTENT_OWNER_REF
+                        case EXTENT_OWNER_REF:
+                            cout << format(" extent_owner_ref root={:x}", eir.offset);
+                        break;
 
                         default:
                             cout << format(" {:02x}", (uint8_t)eir.type);
