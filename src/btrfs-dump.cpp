@@ -563,8 +563,10 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                 break;
             }
 
-            // } elsif ($type == 0xf6) { # QGROUP_RELATION
-            //     printf("qgroup_relation");
+            case QGROUP_RELATION:
+                cout << "qgroup_relation";
+                break;
+
             // } elsif ($type == 0xf8 && $id == 0xfffffffffffffffc) { # balance
             //     my ($fl, @f);
             //
