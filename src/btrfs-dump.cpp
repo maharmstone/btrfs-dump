@@ -561,8 +561,6 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                 break;
             }
 
-            // FIXME - STRING_ITEM
-
             default:
                 cerr << format("ERROR - unknown type {} (size {:x})", key.type, s.size()) << endl;
 
