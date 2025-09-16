@@ -230,6 +230,13 @@ constexpr uint64_t QGROUP_STATUS_FLAG_RESCAN = 1 << 1;
 constexpr uint64_t QGROUP_STATUS_FLAG_INCONSISTENT = 1 << 2;
 constexpr uint64_t QGROUP_STATUS_FLAG_SIMPLE_MODE = 1 << 3;
 
+constexpr uint64_t QGROUP_LIMIT_MAX_RFER = 1 << 0;
+constexpr uint64_t QGROUP_LIMIT_MAX_EXCL = 1 << 1;
+constexpr uint64_t QGROUP_LIMIT_RSV_RFER = 1 << 2;
+constexpr uint64_t QGROUP_LIMIT_RSV_EXCL = 1 << 3;
+constexpr uint64_t QGROUP_LIMIT_RFER_CMPR = 1 << 4;
+constexpr uint64_t QGROUP_LIMIT_EXCL_CMPR = 1 << 5;
+
 struct uuid {
     array<uint8_t, 16> uuid;
 };
@@ -667,6 +674,14 @@ struct qgroup_info_item {
     le64 rfer_cmpr;
     le64 excl;
     le64 excl_cmpr;
+} __attribute__ ((__packed__));
+
+struct qgroup_limit_item {
+    le64 flags;
+    le64 max_rfer;
+    le64 max_excl;
+    le64 rsv_rfer;
+    le64 rsv_excl;
 } __attribute__ ((__packed__));
 
 enum class raid_type {
@@ -2361,5 +2376,80 @@ struct std::formatter<btrfs::qgroup_info_item> {
         return format_to(ctx.out(), "generation={:x} rfer={:x} rfer_cmpr={:x} excl={:x} excl_cmpr={:x}",
                          qi.generation, qi.rfer, qi.rfer_cmpr, qi.excl,
                          qi.excl_cmpr);
+    }
+};
+
+string qgroup_limit_flags(uint64_t f) {
+    string ret;
+
+    if (f & btrfs::QGROUP_LIMIT_MAX_RFER) {
+        ret = "max_rfer";
+        f &= ~btrfs::QGROUP_LIMIT_MAX_RFER;
+    }
+
+    if (f & btrfs::QGROUP_LIMIT_MAX_EXCL) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "max_excl";
+        f &= ~btrfs::QGROUP_LIMIT_MAX_EXCL;
+    }
+
+    if (f & btrfs::QGROUP_LIMIT_RSV_RFER) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "rsv_rfer";
+        f &= ~btrfs::QGROUP_LIMIT_RSV_RFER;
+    }
+
+    if (f & btrfs::QGROUP_LIMIT_RSV_EXCL) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "rsv_excl";
+        f &= ~btrfs::QGROUP_LIMIT_RSV_EXCL;
+    }
+
+    if (f & btrfs::QGROUP_LIMIT_RFER_CMPR) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "rfer_cmpr";
+        f &= ~btrfs::QGROUP_LIMIT_RFER_CMPR;
+    }
+
+    if (f & btrfs::QGROUP_LIMIT_EXCL_CMPR) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "excl_cmpr";
+        f &= ~btrfs::QGROUP_LIMIT_EXCL_CMPR;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
+template<>
+struct std::formatter<btrfs::qgroup_limit_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::qgroup_limit_item& qli, format_context& ctx) const {
+        return format_to(ctx.out(), "flags={} max_rfer={:x} max_excl={:x} rsv_rfer={:x} rsv_excl={:x}",
+                         qgroup_limit_flags(qli.flags), qli.max_rfer, qli.max_excl,
+                         qli.rsv_rfer, qli.rsv_excl);
     }
 };

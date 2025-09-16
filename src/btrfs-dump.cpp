@@ -554,10 +554,15 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                 break;
             }
 
-            // } elsif ($type == 0xf4) { # QGROUP_LIMIT
-            //     @b = unpack("QQQQQ", $s);
-            //     printf("qgroup_limit flags=%x max_rfer=%x max_excl=%x rsv_rfer=%x rsv_excl=%x", $b[0], $b[1], $b[2], $b[3], $b[4]);
-            //     $s = substr($s, 0x28);
+            case QGROUP_LIMIT: {
+                const auto& qli = *(btrfs::qgroup_limit_item*)s.data();
+
+                cout << format("qgroup_limit {}", qli);
+
+                s = s.subspan(sizeof(btrfs::qgroup_limit_item));
+                break;
+            }
+
             // } elsif ($type == 0xf6) { # QGROUP_RELATION
             //     printf("qgroup_relation");
             // } elsif ($type == 0xf8 && $id == 0xfffffffffffffffc) { # balance
