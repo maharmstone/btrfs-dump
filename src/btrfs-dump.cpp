@@ -744,15 +744,19 @@ static map<uint64_t, chunk> load_sys_chunks() {
     return sys_chunks;
 }
 
-static void dump(const filesystem::path& fn) {
+static void dump(const vector<filesystem::path>& fns) {
     map<int64_t, uint64_t> roots, log_roots;
 
-    ifstream f(fn);
+    vector<ifstream> files;
 
-    if (f.fail())
-        throw formatted_error("Failed to open {}", fn.string()); // FIXME - include why
+    for (const auto& p : fns) {
+        files.emplace_back(p);
 
-    read_superblock(f);
+        if (files.back().fail())
+            throw formatted_error("Failed to open {}", p.string()); // FIXME - include why
+    }
+
+    read_superblock(files[0]);
 
     // FIXME - multiple devices (including for SYSTEM chunks)
 
@@ -762,7 +766,7 @@ static void dump(const filesystem::path& fn) {
 
     map<uint64_t, chunk> chunks;
 
-    dump_tree(f, sb.chunk_root, "", sys_chunks, [&chunks](const btrfs::key& key, span<const uint8_t> item) {
+    dump_tree(files[0], sb.chunk_root, "", sys_chunks, [&chunks](const btrfs::key& key, span<const uint8_t> item) {
         if (key.type != btrfs::key_type::CHUNK_ITEM)
             return;
 
@@ -782,7 +786,7 @@ static void dump(const filesystem::path& fn) {
     cout << endl;
 
     cout << "ROOT:" << endl;
-    dump_tree(f, sb.root, "", chunks, [&roots](const btrfs::key& key, span<const uint8_t> item) {
+    dump_tree(files[0], sb.root, "", chunks, [&roots](const btrfs::key& key, span<const uint8_t> item) {
         if (key.type != btrfs::key_type::ROOT_ITEM)
             return;
 
@@ -795,7 +799,7 @@ static void dump(const filesystem::path& fn) {
     if (sb.log_root != 0) {
         cout << "LOG:" << endl;
 
-        dump_tree(f, sb.log_root, "", chunks, [&log_roots](const btrfs::key& key, span<const uint8_t> item) {
+        dump_tree(files[0], sb.log_root, "", chunks, [&log_roots](const btrfs::key& key, span<const uint8_t> item) {
             if (key.type != btrfs::key_type::ROOT_ITEM)
                 return;
 
@@ -810,14 +814,14 @@ static void dump(const filesystem::path& fn) {
     for (auto [root_num, bytenr] : roots) {
         cout << format("Tree {:x}:", (uint64_t)root_num) << endl;
 
-        dump_tree(f, bytenr, "", chunks);
+        dump_tree(files[0], bytenr, "", chunks);
         cout << endl;
     }
 
     for (auto [root_num, bytenr] : log_roots) {
         cout << format("Tree {:x} (log):", (uint64_t)root_num) << endl;
 
-        dump_tree(f, bytenr, "", chunks);
+        dump_tree(files[0], bytenr, "", chunks);
         cout << endl;
     }
 }
@@ -849,8 +853,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    if (print_usage || optind != argc - 1) {
-        fprintf(stderr, R"(Usage: btrfs-dump <file>
+    if (print_usage || optind == argc) {
+        fprintf(stderr, R"(Usage: btrfs-dump <device> [<device>...]
 
     Dump the metadata of a btrfs image in text format.
 
@@ -860,10 +864,14 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    auto fn = string_view(argv[optind]);
+    vector<filesystem::path> fns;
+
+    for (int i = optind; i < argc; i++) {
+        fns.emplace_back(argv[i]);
+    }
 
     try {
-        dump(fn);
+        dump(fns);
     } catch (const exception& e) {
         cerr << "Exception: " << e.what() << endl;
     }
