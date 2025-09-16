@@ -257,6 +257,8 @@ constexpr uint64_t BALANCE_ARGS_USAGE_RANGE = 1 << 10;
 
 struct uuid {
     array<uint8_t, 16> uuid;
+
+    auto operator<=>(const btrfs::uuid&) const = default;
 };
 
 struct dev_item {
