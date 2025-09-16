@@ -215,8 +215,10 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                 break;
             }
 
-            // } elsif ($type == 0x30) { # ORPHAN_ITEM
-            //     printf("orphan_item");
+            case ORPHAN_ITEM:
+                cout << "orphan_item";
+                break;
+
             // } elsif ($type == 0x48) { # LOG_INDEX
             //     @b = unpack("Q", $s);
             //     $s = substr($s, 8);

@@ -330,7 +330,7 @@ enum class key_type : uint8_t {
     XATTR_ITEM = 0x18,
     VERITY_DESC_ITEM = 0x24,
     VERITY_MERKLE_ITEM = 0x25,
-    ORPHAN_INODE = 0x30,
+    ORPHAN_ITEM = 0x30,
     DIR_LOG_INDEX = 0x48,
     DIR_ITEM = 0x54,
     DIR_INDEX = 0x60,
@@ -727,8 +727,8 @@ struct std::formatter<enum btrfs::key_type> {
                 return format_to(ctx.out(), "VERITY_DESC_ITEM");
             case btrfs::key_type::VERITY_MERKLE_ITEM:
                 return format_to(ctx.out(), "VERITY_MERKLE_ITEM");
-            case btrfs::key_type::ORPHAN_INODE:
-                return format_to(ctx.out(), "ORPHAN_INODE");
+            case btrfs::key_type::ORPHAN_ITEM:
+                return format_to(ctx.out(), "ORPHAN_ITEM");
             case btrfs::key_type::DIR_LOG_INDEX:
                 return format_to(ctx.out(), "DIR_LOG_INDEX");
             case btrfs::key_type::DIR_ITEM:
