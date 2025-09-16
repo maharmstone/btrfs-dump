@@ -225,6 +225,11 @@ constexpr uint64_t BLOCK_FLAG_FULL_BACKREF = 1 << 8;
 
 constexpr uint64_t ROOT_SUBVOL_DEAD = (uint64_t)1 << 48;
 
+constexpr uint64_t QGROUP_STATUS_FLAG_ON = 1 << 0;
+constexpr uint64_t QGROUP_STATUS_FLAG_RESCAN = 1 << 1;
+constexpr uint64_t QGROUP_STATUS_FLAG_INCONSISTENT = 1 << 2;
+constexpr uint64_t QGROUP_STATUS_FLAG_SIMPLE_MODE = 1 << 3;
+
 struct uuid {
     array<uint8_t, 16> uuid;
 };
@@ -646,6 +651,14 @@ struct fsverity_descriptor {
 
 struct dir_log_item {
     le64 end;
+} __attribute__ ((__packed__));
+
+struct qgroup_status_item {
+    le64 version;
+    le64 generation;
+    le64 flags;
+    le64 rescan;
+    le64 enable_gen;
 } __attribute__ ((__packed__));
 
 enum class raid_type {
@@ -2257,5 +2270,69 @@ struct std::formatter<btrfs::dir_log_item> {
     template<typename format_context>
     auto format(const btrfs::dir_log_item& dli, format_context& ctx) const {
         return format_to(ctx.out(), "end={:x}", dli.end);
+    }
+};
+
+constexpr uint64_t QGROUP_STATUS_FLAG_ON = 1 << 0;
+constexpr uint64_t QGROUP_STATUS_FLAG_RESCAN = 1 << 1;
+constexpr uint64_t QGROUP_STATUS_FLAG_INCONSISTENT = 1 << 2;
+constexpr uint64_t QGROUP_STATUS_FLAG_SIMPLE_MODE = 1 << 3;
+
+string qgroup_status_flags(uint64_t f) {
+    string ret;
+
+    if (f & btrfs::QGROUP_STATUS_FLAG_ON) {
+        ret = "on";
+        f &= ~btrfs::QGROUP_STATUS_FLAG_ON;
+    }
+
+    if (f & btrfs::QGROUP_STATUS_FLAG_RESCAN) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "rescan";
+        f &= ~btrfs::QGROUP_STATUS_FLAG_RESCAN;
+    }
+
+    if (f & btrfs::QGROUP_STATUS_FLAG_INCONSISTENT) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "inconsistent";
+        f &= ~btrfs::QGROUP_STATUS_FLAG_INCONSISTENT;
+    }
+
+    if (f & btrfs::QGROUP_STATUS_FLAG_SIMPLE_MODE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "simple_mode";
+        f &= ~btrfs::QGROUP_STATUS_FLAG_SIMPLE_MODE;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
+template<>
+struct std::formatter<btrfs::qgroup_status_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::qgroup_status_item& qsi, format_context& ctx) const {
+        return format_to(ctx.out(), "version={:x} generation={:x} flags={} rescan={:x} enable_gen={:x}",
+                         qsi.version, qsi.generation, qgroup_status_flags(qsi.flags),
+                         qsi.rescan, qsi.enable_gen);
     }
 };
