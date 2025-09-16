@@ -237,6 +237,24 @@ constexpr uint64_t QGROUP_LIMIT_RSV_EXCL = 1 << 3;
 constexpr uint64_t QGROUP_LIMIT_RFER_CMPR = 1 << 4;
 constexpr uint64_t QGROUP_LIMIT_EXCL_CMPR = 1 << 5;
 
+constexpr uint64_t BALANCE_DATA = 1 << 0;
+constexpr uint64_t BALANCE_SYSTEM = 1 << 1;
+constexpr uint64_t BALANCE_METADATA = 1 << 2;
+constexpr uint64_t BALANCE_FORCE = 1 << 3;
+constexpr uint64_t BALANCE_RESUME = 1 << 4;
+
+constexpr uint64_t BALANCE_ARGS_PROFILES = 1 << 0;
+constexpr uint64_t BALANCE_ARGS_USAGE = 1 << 1;
+constexpr uint64_t BALANCE_ARGS_DEVID = 1 << 2;
+constexpr uint64_t BALANCE_ARGS_DRANGE = 1 << 3;
+constexpr uint64_t BALANCE_ARGS_VRANGE = 1 << 4;
+constexpr uint64_t BALANCE_ARGS_LIMIT = 1 << 5;
+constexpr uint64_t BALANCE_ARGS_LIMIT_RANGE = 1 << 6;
+constexpr uint64_t BALANCE_ARGS_STRIPES_RANGE = 1 << 7;
+constexpr uint64_t BALANCE_ARGS_CONVERT = 1 << 8;
+constexpr uint64_t BALANCE_ARGS_SOFT = 1 << 9;
+constexpr uint64_t BALANCE_ARGS_USAGE_RANGE = 1 << 10;
+
 struct uuid {
     array<uint8_t, 16> uuid;
 };
@@ -682,6 +700,42 @@ struct qgroup_limit_item {
     le64 max_excl;
     le64 rsv_rfer;
     le64 rsv_excl;
+} __attribute__ ((__packed__));
+
+struct disk_balance_args {
+    le64 profiles;
+    union {
+        le64 usage;
+        struct {
+            le32 usage_min;
+            le32 usage_max;
+        } __attribute__ ((__packed__)) s1;
+    } __attribute__ ((__packed__));
+    le64 devid;
+    le64 pstart;
+    le64 pend;
+    le64 vstart;
+    le64 vend;
+    le64 target;
+    le64 flags;
+    union {
+        le64 limit;
+        struct {
+            le32 limit_min;
+            le32 limit_max;
+        } __attribute__ ((__packed__)) s2;
+    } __attribute__ ((__packed__));
+    le32 stripes_min;
+    le32 stripes_max;
+    le64 unused[6];
+} __attribute__ ((__packed__));
+
+struct balance_item {
+    le64 flags;
+    disk_balance_args data;
+    disk_balance_args meta;
+    disk_balance_args sys;
+    le64 unused[4];
 } __attribute__ ((__packed__));
 
 enum class raid_type {
@@ -2451,5 +2505,242 @@ struct std::formatter<btrfs::qgroup_limit_item> {
         return format_to(ctx.out(), "flags={} max_rfer={:x} max_excl={:x} rsv_rfer={:x} rsv_excl={:x}",
                          qgroup_limit_flags(qli.flags), qli.max_rfer, qli.max_excl,
                          qli.rsv_rfer, qli.rsv_excl);
+    }
+};
+
+string balance_flags(uint64_t f) {
+    string ret;
+
+    if (f & btrfs::BALANCE_DATA) {
+        ret = "data";
+        f &= ~btrfs::BALANCE_DATA;
+    }
+
+    if (f & btrfs::BALANCE_SYSTEM) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "system";
+        f &= ~btrfs::BALANCE_SYSTEM;
+    }
+
+    if (f & btrfs::BALANCE_METADATA) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "metadata";
+        f &= ~btrfs::BALANCE_METADATA;
+    }
+
+    if (f & btrfs::BALANCE_FORCE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "force";
+        f &= ~btrfs::BALANCE_FORCE;
+    }
+
+    if (f & btrfs::BALANCE_RESUME) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "resume";
+        f &= ~btrfs::BALANCE_RESUME;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
+string balance_args_flags(uint64_t f) {
+    string ret;
+
+    if (f & btrfs::BALANCE_ARGS_PROFILES) {
+        ret = "profiles";
+        f &= ~btrfs::BALANCE_ARGS_PROFILES;
+    }
+
+    if (f & btrfs::BALANCE_ARGS_USAGE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "usage";
+        f &= ~btrfs::BALANCE_ARGS_USAGE;
+    }
+
+    if (f & btrfs::BALANCE_ARGS_DEVID) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "devid";
+        f &= ~btrfs::BALANCE_ARGS_DEVID;
+    }
+
+    if (f & btrfs::BALANCE_ARGS_DRANGE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "drange";
+        f &= ~btrfs::BALANCE_ARGS_DRANGE;
+    }
+
+    if (f & btrfs::BALANCE_ARGS_VRANGE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "vrange";
+        f &= ~btrfs::BALANCE_ARGS_VRANGE;
+    }
+
+    if (f & btrfs::BALANCE_ARGS_LIMIT) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "limit";
+        f &= ~btrfs::BALANCE_ARGS_LIMIT;
+    }
+
+    if (f & btrfs::BALANCE_ARGS_LIMIT_RANGE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "limit_range";
+        f &= ~btrfs::BALANCE_ARGS_LIMIT_RANGE;
+    }
+
+    if (f & btrfs::BALANCE_ARGS_STRIPES_RANGE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "stripes_range";
+        f &= ~btrfs::BALANCE_ARGS_STRIPES_RANGE;
+    }
+
+    if (f & btrfs::BALANCE_ARGS_CONVERT) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "convert";
+        f &= ~btrfs::BALANCE_ARGS_CONVERT;
+    }
+
+    if (f & btrfs::BALANCE_ARGS_SOFT) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "soft";
+        f &= ~btrfs::BALANCE_ARGS_SOFT;
+    }
+
+    if (f & btrfs::BALANCE_ARGS_USAGE_RANGE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "usage_range";
+        f &= ~btrfs::BALANCE_ARGS_USAGE_RANGE;
+    }
+
+    if (ret.empty())
+        ret += format("{:x}", f);
+    else if (f != 0)
+        ret += format(",{:x}", f);
+
+    return ret;
+}
+
+template<>
+struct std::formatter<btrfs::disk_balance_args> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::disk_balance_args& dba, format_context& ctx) const {
+        bool first = true;
+        auto ret = ctx.out();
+
+        if (dba.flags & btrfs::BALANCE_ARGS_PROFILES) {
+            ret = format_to(ctx.out(), "profiles={:x}", dba.profiles);
+            first = false;
+        }
+
+        if (dba.flags & btrfs::BALANCE_ARGS_USAGE) {
+            ret = format_to(ret, "{}usage={:x}", first ? "" : " ", dba.usage);
+            first = false;
+        } else if (dba.flags & btrfs::BALANCE_ARGS_USAGE_RANGE) {
+            ret = format_to(ret, "{}usage_min={:x} usage_max={:x}",
+                            first ? "" : " ", dba.s1.usage_min,
+                            dba.s1.usage_max);
+            first = false;
+        }
+
+        if (dba.flags & btrfs::BALANCE_ARGS_DEVID) {
+            ret = format_to(ret, "{}devid={:x}", first ? "" : " ",
+                            dba.devid);
+            first = false;
+        }
+
+        if (dba.flags & btrfs::BALANCE_ARGS_DRANGE) {
+            ret = format_to(ret, "{}pstart={:x} pend={:x}",
+                            first ? "" : " ", dba.pstart, dba.pend);
+            first = false;
+        }
+
+        if (dba.flags & btrfs::BALANCE_ARGS_VRANGE) {
+            ret = format_to(ret, "{}vstart={:x} vend={:x}",
+                            first ? "" : " ", dba.vstart, dba.vend);
+            first = false;
+        }
+
+        if (dba.flags & btrfs::BALANCE_ARGS_CONVERT) {
+            ret = format_to(ret, "{}target={:x}", first ? "" : " ",
+                            dba.target);
+            first = false;
+        }
+
+        ret = format_to(ret, "{}flags={}", first ? "" : " ",
+                        balance_args_flags(dba.flags));
+
+        if (dba.flags & btrfs::BALANCE_ARGS_LIMIT)
+            ret = format_to(ret, " limit={:x}", dba.limit);
+
+        if (dba.flags & btrfs::BALANCE_ARGS_LIMIT_RANGE) {
+            ret = format_to(ret, " limit_min={:x} limit_max={:x}",
+                            dba.s2.limit_min, dba.s2.limit_max);
+        }
+
+        if (dba.flags & btrfs::BALANCE_ARGS_STRIPES_RANGE) {
+            ret = format_to(ret, " stripes_min={:x} stripes_max={:x}",
+                            dba.stripes_min, dba.stripes_max);
+        }
+
+        return ret;
+    }
+};
+
+template<>
+struct std::formatter<btrfs::balance_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::balance_item& bi, format_context& ctx) const {
+        return format_to(ctx.out(), "flags={} data=({}) meta=({}) sys=({})",
+                         balance_flags(bi.flags), bi.data, bi.meta, bi.sys);
     }
 };

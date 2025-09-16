@@ -166,6 +166,12 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
         cout << format("free_space {}", fsh);
 
         s = s.subspan(sizeof(btrfs::free_space_header));
+    } else if (key.objectid == btrfs::BALANCE_OBJECTID && key.type == btrfs::key_type::TEMPORARY_ITEM) {
+        const auto& bi = *(btrfs::balance_item*)s.data();
+
+        cout << format("balance {}", bi);
+
+        s = s.subspan(sizeof(btrfs::balance_item));
     } else {
         switch (key.type) {
             using enum btrfs::key_type;
