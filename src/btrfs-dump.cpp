@@ -110,6 +110,48 @@ static string read_data(ifstream& f, uint64_t addr, uint64_t size, const map<uin
     return ret;
 }
 
+static string free_space_bitmap(span<const uint8_t> s, uint64_t offset) {
+    string runs;
+
+    uint64_t run_start = 0;
+    bool last_zero = true;
+
+    for (size_t i = 0; i < s.size(); i++) {
+        auto c = s[i];
+
+        for (unsigned int j = 0; j < 8; j++) {
+            if (c & 1) {
+                if (last_zero)
+                    run_start = (i * 8) + j;
+
+                last_zero = false;
+            } else {
+                if (!last_zero) {
+                    if (!runs.empty())
+                        runs += "; ";
+
+                    runs += format("{:x}, {:x}", offset + (run_start * sb.sectorsize),
+                                   (((i * 8) + j) - run_start) * sb.sectorsize);
+                }
+
+                last_zero = true;
+            }
+
+            c >>= 1;
+        }
+    }
+
+    if (!last_zero) {
+        if (!runs.empty())
+            runs += "; ";
+
+        runs += format("{:x}, {:x}", offset + (run_start * sb.sectorsize),
+                       ((s.size() * 8) - run_start) * sb.sectorsize);
+    }
+
+    return runs;
+}
+
 static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key& key) {
     bool unrecog = false;
 
@@ -449,9 +491,11 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
                 break;
             }
 
-            // } elsif ($type == 0xc8) { # FREE_SPACE_BITMAP
-            //     printf("free_space_bitmap %s", free_space_bitmap($s, $id));
-            //     $s = "";
+            case FREE_SPACE_BITMAP: {
+                cout << format("free_space_bitmap {}", free_space_bitmap(s, key.objectid));
+                s = s.subspan(s.size());
+                break;
+            }
 
             case DEV_EXTENT: {
                 const auto& de = *(btrfs::dev_extent*)s.data();
