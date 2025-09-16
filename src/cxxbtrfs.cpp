@@ -183,6 +183,7 @@ constexpr uint64_t DEV_TREE_OBJECTID = 0x4;
 constexpr uint64_t FS_TREE_OBJECTID = 0x5;
 constexpr uint64_t ROOT_TREE_DIR_OBJECTID = 0x6;
 constexpr uint64_t CSUM_TREE_OBJECTID = 0x7;
+constexpr uint64_t QUOTA_TREE_OBJECTID = 0x8;
 constexpr uint64_t UUID_TREE_OBJECTID = 0x9;
 constexpr uint64_t FREE_SPACE_TREE_OBJECTID = 0xa;
 constexpr uint64_t BLOCK_GROUP_TREE_OBJECTID = 0xb;
