@@ -440,8 +440,9 @@ static void dump_item(span<const uint8_t> s, string_view pref, const btrfs::key&
 
             // FIXME - EXTENT_OWNER_REF
 
-            // } elsif ($type == 0xb0) { # TREE_BLOCK_REF
-            //     printf("tree_block_ref ");
+            case TREE_BLOCK_REF:
+                cout << "tree_block_ref";
+                break;
 
             case EXTENT_DATA_REF: {
                 const auto& edr = *(btrfs::extent_data_ref*)s.data();
