@@ -656,8 +656,6 @@ static void dump_tree(ifstream& f, uint64_t addr, string_view pref, const map<ui
             break;
     }
 
-    // $treenum = $headbits[6];
-    //
     if (h.level == 0) {
         auto items = span((btrfs::item*)((uint8_t*)&h + sizeof(btrfs::header)), h.nritems);
 
@@ -670,14 +668,6 @@ static void dump_tree(ifstream& f, uint64_t addr, string_view pref, const map<ui
 
             if (func.has_value())
                 func.value()(it.key, item);
-
-    //         if ($ihb[1] == 0x84) {
-    //             if ($treenum == 1) {
-    //                 $roots{$ihb[0]} = unpack("x176Q", $item);
-    //             } elsif ($treenum == 0xfffffffffffffffa && $ihb[0] == 0xfffffffffffffffa) {
-    //                 $logroots{$ihb[2]} = unpack("x176Q", $item);
-    //             }
-    //         }
         }
     } else {
         auto items = span((btrfs::key_ptr*)((uint8_t*)&h + sizeof(btrfs::header)), h.nritems);
@@ -728,7 +718,7 @@ static map<uint64_t, chunk> load_sys_chunks() {
 }
 
 static void dump(const filesystem::path& fn) {
-    map<int64_t, uint64_t> roots;
+    map<int64_t, uint64_t> roots, log_roots;
 
     ifstream f(fn);
 
@@ -775,10 +765,30 @@ static void dump(const filesystem::path& fn) {
     });
     cout << endl;
 
-    // FIXME - log
+    if (sb.log_root != 0) {
+        cout << "LOG:" << endl;
+
+        dump_tree(f, sb.log_root, "", chunks, [&log_roots](const btrfs::key& key, span<const uint8_t> item) {
+            if (key.type != btrfs::key_type::ROOT_ITEM)
+                return;
+
+            const auto& ri = *(btrfs::root_item*)item.data();
+
+            log_roots.insert(make_pair(key.offset, ri.bytenr));
+        });
+
+        cout << endl;
+    }
 
     for (auto [root_num, bytenr] : roots) {
         cout << format("Tree {:x}:", (uint64_t)root_num) << endl;
+
+        dump_tree(f, bytenr, "", chunks);
+        cout << endl;
+    }
+
+    for (auto [root_num, bytenr] : log_roots) {
+        cout << format("Tree {:x} (log):", (uint64_t)root_num) << endl;
 
         dump_tree(f, bytenr, "", chunks);
         cout << endl;
