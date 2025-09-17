@@ -82,14 +82,21 @@ static string read_data(map<uint64_t, device>& devices, uint64_t addr, uint64_t 
             break;
         }
 
-        case btrfs::raid_type::RAID10:
-        //     my $stripe_num = ($addr - $obj->{'offset'}) / $obj->{'stripe_len'};
-        //     my $stripe_offset = ($addr - $obj->{'offset'}) % $obj->{'stripe_len'};
-        //     my $stripe = $stripe_num % ($obj->{'num_stripes'} / $obj->{'sub_stripes'}) * $obj->{'sub_stripes'};
-        //
-        //     $f = $devs{$obj->{'stripes'}[$stripe]{'devid'}};
-        //     $physoff = $obj->{'stripes'}[$stripe]{'physoffset'} + (($stripe_num / ($obj->{'num_stripes'} / $obj->{'sub_stripes'})) * $obj->{'stripe_len'}) + $stripe_offset;
-            throw runtime_error("FIXME - RAID10");
+        case btrfs::raid_type::RAID10: {
+            auto stripe_num = (addr - chunk_start) / c.stripe_len;
+            auto stripe_offset = (addr - chunk_start) % c.stripe_len;
+            auto stripe = (stripe_num % (c.num_stripes / c.sub_stripes)) * c.sub_stripes;
+
+            if (devices.count(c.stripe[stripe].devid) == 0)
+                throw formatted_error("device {} not found", c.stripe[stripe].devid);
+
+            auto& d = devices.at(c.stripe[stripe].devid);
+
+            d.f.seekg(c.stripe[stripe].offset + ((stripe_num / (c.num_stripes / c.sub_stripes)) * c.stripe_len) + stripe_offset);
+            d.f.read(ret.data(), size);
+
+            break;
+        }
 
         case btrfs::raid_type::RAID0: {
             auto stripe_num = (addr - chunk_start) / c.stripe_len;
