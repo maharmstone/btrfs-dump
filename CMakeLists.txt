@@ -7,7 +7,11 @@ project(btrfs-dump)
 
 include(GNUInstallDirs)
 
+find_package(PkgConfig REQUIRED)
+
 add_executable(btrfs-dump src/btrfs-dump.cpp)
+
+pkg_check_modules(BLKID REQUIRED IMPORTED_TARGET blkid)
 
 target_sources(btrfs-dump PUBLIC FILE_SET CXX_MODULES FILES
     src/cxxbtrfs.cpp
@@ -15,6 +19,8 @@ target_sources(btrfs-dump PUBLIC FILE_SET CXX_MODULES FILES
     src/b64.cpp)
 
 target_compile_options(btrfs-dump PUBLIC -Wall -Wextra -Wno-unqualified-std-cast-call -Wno-missing-field-initializers)
+
+target_link_libraries(btrfs-dump PkgConfig::BLKID)
 
 install(TARGETS btrfs-dump DESTINATION ${CMAKE_INSTALL_BINDIR}
     CXX_MODULES_BMI EXCLUDE_FROM_ALL

@@ -5,6 +5,7 @@
 #include <map>
 #include <functional>
 #include <getopt.h>
+#include <blkid.h>
 
 import cxxbtrfs;
 import formatted_error;
