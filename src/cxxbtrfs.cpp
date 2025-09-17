@@ -255,6 +255,15 @@ constexpr uint64_t BALANCE_ARGS_CONVERT = 1 << 8;
 constexpr uint64_t BALANCE_ARGS_SOFT = 1 << 9;
 constexpr uint64_t BALANCE_ARGS_USAGE_RANGE = 1 << 10;
 
+constexpr uint64_t DEV_REPLACE_ITEM_CONT_READING_FROM_SRCDEV_MODE_ALWAYS = 0;
+constexpr uint64_t DEV_REPLACE_ITEM_CONT_READING_FROM_SRCDEV_MODE_AVOID = 1;
+
+constexpr uint64_t IOCTL_DEV_REPLACE_STATE_NEVER_STARTED = 0;
+constexpr uint64_t IOCTL_DEV_REPLACE_STATE_STARTED = 1;
+constexpr uint64_t IOCTL_DEV_REPLACE_STATE_FINISHED = 2;
+constexpr uint64_t IOCTL_DEV_REPLACE_STATE_CANCELED = 3;
+constexpr uint64_t IOCTL_DEV_REPLACE_STATE_SUSPENDED = 4;
+
 struct uuid {
     array<uint8_t, 16> uuid;
 
@@ -738,6 +747,18 @@ struct balance_item {
     disk_balance_args meta;
     disk_balance_args sys;
     le64 unused[4];
+} __attribute__ ((__packed__));
+
+struct dev_replace_item {
+    le64 src_devid;
+    le64 cursor_left;
+    le64 cursor_right;
+    le64 cont_reading_from_srcdev_mode;
+    le64 replace_state;
+    le64 time_started;
+    le64 time_stopped;
+    le64 num_write_errors;
+    le64 num_uncorrectable_read_errors;
 } __attribute__ ((__packed__));
 
 enum class raid_type {
@@ -2744,5 +2765,67 @@ struct std::formatter<btrfs::balance_item> {
     auto format(const btrfs::balance_item& bi, format_context& ctx) const {
         return format_to(ctx.out(), "flags={} data=({}) meta=({}) sys=({})",
                          balance_flags(bi.flags), bi.data, bi.meta, bi.sys);
+    }
+};
+
+string format_unixtime(uint64_t t) {
+    auto tp = chrono::time_point<chrono::system_clock>(chrono::days{t / 86400});
+    auto hms = chrono::hh_mm_ss{chrono::seconds{t % 86400}};
+    auto ymd = chrono::year_month_day{chrono::floor<chrono::days>(tp)};
+
+    return format("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}",
+                  (int)ymd.year(), (unsigned int)ymd.month(),
+                  (unsigned int)ymd.day(), hms.hours().count(),
+                  hms.minutes().count(), hms.seconds().count());
+}
+
+string cont_reading_from_srcdev_mode(uint64_t m) {
+    switch (m) {
+        case btrfs::DEV_REPLACE_ITEM_CONT_READING_FROM_SRCDEV_MODE_ALWAYS:
+            return "always";
+        case btrfs::DEV_REPLACE_ITEM_CONT_READING_FROM_SRCDEV_MODE_AVOID:
+            return "avoid";
+        default:
+            return format("{:x}", m);
+    }
+}
+
+string dev_replace_state(uint64_t m) {
+    switch (m) {
+        case btrfs::IOCTL_DEV_REPLACE_STATE_NEVER_STARTED:
+            return "never_started";
+        case btrfs::IOCTL_DEV_REPLACE_STATE_STARTED:
+            return "started";
+        case btrfs::IOCTL_DEV_REPLACE_STATE_FINISHED:
+            return "finished";
+        case btrfs::IOCTL_DEV_REPLACE_STATE_CANCELED:
+            return "cancelled";
+        case btrfs::IOCTL_DEV_REPLACE_STATE_SUSPENDED:
+            return "suspended";
+        default:
+            return format("{:x}", m);
+    }
+}
+
+template<>
+struct std::formatter<btrfs::dev_replace_item> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::dev_replace_item& dri, format_context& ctx) const {
+        return format_to(ctx.out(), "src_devid={:x} cursor_left={:x} cursor_right={:x} cont_reading_from_srcdev_mode={} replace_state={} time_started={} time_stopped={} num_write_errors={:x} num_uncorrectable_read_errors={:x}",
+                         dri.src_devid, dri.cursor_left, dri.cursor_right,
+                         cont_reading_from_srcdev_mode(dri.cont_reading_from_srcdev_mode),
+                         dev_replace_state(dri.replace_state),
+                         format_unixtime(dri.time_started),
+                         format_unixtime(dri.time_stopped), dri.num_write_errors,
+                         dri.num_uncorrectable_read_errors);
     }
 };

@@ -631,7 +631,14 @@ static void dump_item(span<const uint8_t> s, string_view pref,
                 break;
             }
 
-            // FIXME - DEV_REPLACE
+            case DEV_REPLACE: {
+                const auto& dri = *(btrfs::dev_replace_item*)s.data();
+
+                cout << format("dev_replace {}", dri);
+
+                s = s.subspan(sizeof(btrfs::dev_replace_item));
+                break;
+            }
 
             case UUID_SUBVOL: {
                 auto num = *(btrfs::le64*)s.data();
