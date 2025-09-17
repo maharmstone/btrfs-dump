@@ -1018,9 +1018,9 @@ struct std::formatter<btrfs::uuid> {
 
     template<typename format_context>
     auto format(const btrfs::uuid& u, format_context& ctx) const {
-        return format_to(ctx.out(), "{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-                         u.uuid[15], u.uuid[14], u.uuid[13], u.uuid[12], u.uuid[11], u.uuid[10], u.uuid[9], u.uuid[8], u.uuid[7],
-                         u.uuid[6], u.uuid[5], u.uuid[4], u.uuid[3], u.uuid[2], u.uuid[1], u.uuid[0]);
+        return format_to(ctx.out(), "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+                         u.uuid[0], u.uuid[1], u.uuid[2], u.uuid[3], u.uuid[4], u.uuid[5], u.uuid[6], u.uuid[7], u.uuid[8],
+                         u.uuid[9], u.uuid[10], u.uuid[11], u.uuid[12], u.uuid[13], u.uuid[14], u.uuid[15]);
     }
 };
 
