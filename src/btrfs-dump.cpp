@@ -678,28 +678,23 @@ static string physical_str(const map<uint64_t, chunk>& chunks, uint64_t addr) {
 
     auto& [chunk_start, c] = find_chunk(chunks, addr);
 
+    // FIXME - device names rather than numbers?
+
     switch (btrfs::get_chunk_raid_type(c)) {
         case btrfs::raid_type::RAID5:
         case btrfs::raid_type::RAID6: {
-//             auto data_stripes = c.num_stripes - 1;
-//
-//             if (btrfs::get_chunk_raid_type(c) == btrfs::raid_type::RAID6)
-//                 data_stripes--;
-//
-//             auto stripeoff = (addr - chunk_start) % (data_stripes * c.stripe_len);
-//             auto parity = (((addr - chunk_start) / (data_stripes * c.stripe_len)) + c.num_stripes - 1) % c.num_stripes;
-//             auto stripe2 = stripeoff / c.stripe_len;
-//             auto stripe = (parity + stripe2 + 1) % c.num_stripes;
-//
-//             if (devices.count(c.stripe[stripe].devid) == 0)
-//                 throw formatted_error("device {} not found", c.stripe[stripe].devid);
-//
-//             auto& d = devices.at(c.stripe[stripe].devid);
-//
-//             d.f.seekg(c.stripe[stripe].offset + (((addr - chunk_start) / (data_stripes * c.stripe_len)) * c.stripe_len) + (stripeoff % c.stripe_len));
-//             d.f.read(ret.data(), size);
-//
-            ret = "?RAID5/6?";
+            auto data_stripes = c.num_stripes - 1;
+
+            if (btrfs::get_chunk_raid_type(c) == btrfs::raid_type::RAID6)
+                data_stripes--;
+
+            auto stripeoff = (addr - chunk_start) % (data_stripes * c.stripe_len);
+            auto parity = (((addr - chunk_start) / (data_stripes * c.stripe_len)) + c.num_stripes - 1) % c.num_stripes;
+            auto stripe2 = stripeoff / c.stripe_len;
+            auto stripe = (parity + stripe2 + 1) % c.num_stripes;
+
+            ret = format("{},{:x}", c.stripe[stripe].devid,
+                         c.stripe[stripe].offset + (((addr - chunk_start) / (data_stripes * c.stripe_len)) * c.stripe_len) + (stripeoff % c.stripe_len));
             break;
         }
 
