@@ -49,10 +49,14 @@ static const pair<uint64_t, const chunk&> find_chunk(const map<uint64_t, chunk>&
     return p;
 }
 
-static string read_data(device& d, uint64_t addr, uint64_t size, const map<uint64_t, chunk>& chunks) {
-    uint64_t physoff;
-
+static string read_data(map<uint64_t, device>& devices, uint64_t addr, uint64_t size, const map<uint64_t, chunk>& chunks) {
     auto& [chunk_start, c] = find_chunk(chunks, addr);
+
+    string ret;
+
+    ret.resize(size);
+
+    // FIXME - handle degraded reads?
 
     switch (btrfs::get_chunk_raid_type(c)) {
         case btrfs::raid_type::RAID5:
@@ -95,21 +99,18 @@ static string read_data(device& d, uint64_t addr, uint64_t size, const map<uint6
         //     $physoff = $obj->{'stripes'}[$stripe]{'physoffset'} + (($stripe_num / $obj->{'num_stripes'}) * $obj->{'stripe_len'}) + $stripe_offset;
             throw runtime_error("FIXME - RAID0");
 
-        default: // SINGLE, DUP, RAID1, RAID1C3, RAID1C4
-            if (c.stripe[0].devid != d.sb.dev_item.devid)
-                throw runtime_error("FIXME - multiple devices");
+        default: { // SINGLE, DUP, RAID1, RAID1C3, RAID1C4
+            if (devices.count(c.stripe[0].devid) == 0)
+                throw formatted_error("device {} not found", c.stripe[0].devid);
 
-        //     $f = $devs{$obj->{'stripes'}[0]{'devid'}};
-            physoff = c.stripe[0].offset + addr - chunk_start;
+            auto& d = devices.at(c.stripe[0].devid);
+
+            d.f.seekg(c.stripe[0].offset + addr - chunk_start);
+            d.f.read(ret.data(), size);
+
             break;
+        }
     }
-
-    string ret;
-
-    ret.resize(size);
-
-    d.f.seekg(physoff);
-    d.f.read(ret.data(), size);
 
     return ret;
 }
@@ -626,9 +627,10 @@ static void dump_item(span<const uint8_t> s, string_view pref,
     cout << endl;
 }
 
-static void dump_tree(device& d, uint64_t addr, string_view pref, const map<uint64_t, chunk>& chunks,
+static void dump_tree(map<uint64_t, device>& devices, uint64_t addr, string_view pref, const map<uint64_t, chunk>& chunks,
                       optional<function<void(const btrfs::key&, span<const uint8_t>)>> func = nullopt) {
-    auto tree = read_data(d, addr, d.sb.nodesize, chunks);
+    const auto& sb = devices.begin()->second.sb;
+    auto tree = read_data(devices, addr, sb.nodesize, chunks);
 
     const auto& h = *(btrfs::header*)tree.data();
 
@@ -638,7 +640,7 @@ static void dump_tree(device& d, uint64_t addr, string_view pref, const map<uint
         throw formatted_error("Address mismatch: expected {:x}, got {:x}", addr, h.bytenr);
 
     // FIXME - make this less hacky (pass csum_type through to formatter?)
-    switch (d.sb.csum_type) {
+    switch (sb.csum_type) {
         case btrfs::csum_type::CRC32:
             cout << format("{}header {:a}", pref, h) << endl;
             break;
@@ -665,7 +667,7 @@ static void dump_tree(device& d, uint64_t addr, string_view pref, const map<uint
 
             auto item = span((uint8_t*)tree.data() + sizeof(btrfs::header) + it.offset, it.size);
 
-            dump_item(item, pref, it.key, d.sb);
+            dump_item(item, pref, it.key, sb);
 
             if (func.has_value())
                 func.value()(it.key, item);
@@ -676,15 +678,15 @@ static void dump_tree(device& d, uint64_t addr, string_view pref, const map<uint
 
         for (const auto& it : items) {
             cout << format("{}{}\n", pref, it);
-            dump_tree(d, it.blockptr, pref2, chunks, func);
+            dump_tree(devices, it.blockptr, pref2, chunks, func);
         }
     }
 }
 
-static map<uint64_t, chunk> load_sys_chunks(device& d) {
+static map<uint64_t, chunk> load_sys_chunks(const btrfs::super_block& sb) {
     map<uint64_t, chunk> sys_chunks;
 
-    auto sys_array = span(d.sb.sys_chunk_array.data(), d.sb.sys_chunk_array_size);
+    auto sys_array = span(sb.sys_chunk_array.data(), sb.sys_chunk_array_size);
 
     while (!sys_array.empty()) {
         if (sys_array.size() < sizeof(btrfs::key))
@@ -721,7 +723,7 @@ static map<uint64_t, chunk> load_sys_chunks(device& d) {
 static void dump(const vector<filesystem::path>& fns) {
     map<int64_t, uint64_t> roots, log_roots;
     vector<ifstream> files;
-    vector<device> devices;
+    map<uint64_t, device> devices;
 
     for (const auto& p : fns) {
         files.emplace_back(p);
@@ -731,31 +733,40 @@ static void dump(const vector<filesystem::path>& fns) {
     }
 
     for (auto& f : files) {
-        devices.emplace_back(f);
+        device d(f);
 
-        read_superblock(devices.back());
+        read_superblock(d);
+
+        devices.emplace(d.sb.dev_item.devid, move(d));
     }
 
+    const auto& sb = devices.begin()->second.sb;
+
     if (devices.size() > 1) {
-        for (size_t i = 1; i < devices.size(); i++) {
-            if (devices[i].sb.fsid != devices[0].sb.fsid) {
-                throw formatted_error("fsid mismatch (device 0 is {}, device {} is {})",
-                                      devices[0].sb.fsid, i, devices[i].sb.fsid);
+        for (const auto& [dev_id, d] : devices) {
+            if (d.sb.fsid != sb.fsid) {
+                throw formatted_error("fsid mismatch (device {} is {}, device {} is {})",
+                                      sb.dev_item.devid, sb.fsid, dev_id, d.sb.fsid);
             }
         }
     }
 
-    cout << format("superblock {}", devices.front().sb) << endl;
+    if (devices.size() != sb.num_devices) {
+        throw formatted_error("filesystem has {} devices, only {} found",
+                              sb.num_devices, devices.size());
+    }
 
-    // FIXME - multiple devices (including for SYSTEM chunks)
+    // FIXME - do we need to check that generation numbers match?
 
-    auto sys_chunks = load_sys_chunks(devices.front());
+    cout << format("superblock {}", sb) << endl;
+
+    auto sys_chunks = load_sys_chunks(sb);
 
     cout << "CHUNK:" << endl;
 
     map<uint64_t, chunk> chunks;
 
-    dump_tree(devices.front(), devices.front().sb.chunk_root, "", sys_chunks, [&chunks](const btrfs::key& key, span<const uint8_t> item) {
+    dump_tree(devices, sb.chunk_root, "", sys_chunks, [&chunks](const btrfs::key& key, span<const uint8_t> item) {
         if (key.type != btrfs::key_type::CHUNK_ITEM)
             return;
 
@@ -775,7 +786,7 @@ static void dump(const vector<filesystem::path>& fns) {
     cout << endl;
 
     cout << "ROOT:" << endl;
-    dump_tree(devices.front(), devices.front().sb.root, "", chunks, [&roots](const btrfs::key& key, span<const uint8_t> item) {
+    dump_tree(devices, sb.root, "", chunks, [&roots](const btrfs::key& key, span<const uint8_t> item) {
         if (key.type != btrfs::key_type::ROOT_ITEM)
             return;
 
@@ -785,10 +796,10 @@ static void dump(const vector<filesystem::path>& fns) {
     });
     cout << endl;
 
-    if (devices.front().sb.log_root != 0) {
+    if (sb.log_root != 0) {
         cout << "LOG:" << endl;
 
-        dump_tree(devices.front(), devices.front().sb.log_root, "", chunks, [&log_roots](const btrfs::key& key, span<const uint8_t> item) {
+        dump_tree(devices, sb.log_root, "", chunks, [&log_roots](const btrfs::key& key, span<const uint8_t> item) {
             if (key.type != btrfs::key_type::ROOT_ITEM)
                 return;
 
@@ -803,14 +814,14 @@ static void dump(const vector<filesystem::path>& fns) {
     for (auto [root_num, bytenr] : roots) {
         cout << format("Tree {:x}:", (uint64_t)root_num) << endl;
 
-        dump_tree(devices.front(), bytenr, "", chunks);
+        dump_tree(devices, bytenr, "", chunks);
         cout << endl;
     }
 
     for (auto [root_num, bytenr] : log_roots) {
         cout << format("Tree {:x} (log):", (uint64_t)root_num) << endl;
 
-        dump_tree(devices.front(), bytenr, "", chunks);
+        dump_tree(devices, bytenr, "", chunks);
         cout << endl;
     }
 }
