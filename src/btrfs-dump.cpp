@@ -4,6 +4,8 @@
 #include <format>
 #include <map>
 #include <functional>
+#include <memory>
+#include <list>
 #include <getopt.h>
 #include <blkid.h>
 
@@ -14,6 +16,28 @@ import b64;
 using namespace std;
 
 #define MAX_STRIPES 16
+
+class blkid_cache_putter {
+public:
+    using pointer = blkid_cache;
+
+    void operator()(blkid_cache cache) {
+        blkid_put_cache(cache);
+    }
+};
+
+using blkid_cache_ptr = unique_ptr<blkid_cache, blkid_cache_putter>;
+
+class blkid_dev_iterate_ender {
+public:
+    using pointer = blkid_dev_iterate;
+
+    void operator()(blkid_dev_iterate iter) {
+        blkid_dev_iterate_end(iter);
+    }
+};
+
+using blkid_dev_iterate_ptr = unique_ptr<blkid_dev_iterate, blkid_dev_iterate_ender>;
 
 struct chunk : btrfs::chunk {
     btrfs::stripe next_stripes[MAX_STRIPES - 1];
@@ -736,9 +760,37 @@ static map<uint64_t, chunk> load_sys_chunks(const btrfs::super_block& sb) {
     return sys_chunks;
 }
 
+static vector<string> find_devices(const btrfs::uuid& fsid) {
+    vector<string> ret;
+    blkid_cache_ptr cache;
+
+    if (blkid_get_cache(out_ptr(cache), nullptr) < 0)
+        throw runtime_error("blkid_get_cache failed");
+
+    if (blkid_probe_all(cache.get()) < 0)
+        throw runtime_error("blkid_probe_all failed");
+
+    {
+        blkid_dev_iterate_ptr iter{blkid_dev_iterate_begin(cache.get())};
+        blkid_dev dev;
+
+        auto fsid_str = format("{}", fsid);
+
+        blkid_dev_set_search(iter.get(), "TYPE", "btrfs");
+        blkid_dev_set_search(iter.get(), "UUID", fsid_str.c_str());
+
+        while (blkid_dev_next(iter.get(), &dev) == 0) {
+            ret.emplace_back(blkid_dev_devname(dev));
+        }
+    }
+
+    return ret;
+}
+
+
 static void dump(const vector<filesystem::path>& fns) {
     map<int64_t, uint64_t> roots, log_roots;
-    vector<ifstream> files;
+    list<ifstream> files;
     map<uint64_t, device> devices;
 
     for (const auto& p : fns) {
@@ -761,18 +813,61 @@ static void dump(const vector<filesystem::path>& fns) {
 
     const auto& sb = devices.begin()->second.sb;
 
-    if (devices.size() > 1) {
-        for (const auto& [dev_id, d] : devices) {
-            if (d.sb.fsid != sb.fsid) {
-                throw formatted_error("fsid mismatch (device {} is {}, device {} is {})",
-                                      sb.dev_item.devid, sb.fsid, dev_id, d.sb.fsid);
+    if (fns.size() == 1 && sb.num_devices > 1) {
+        auto other_fns = find_devices(sb.fsid);
+
+        for (const auto& n : other_fns) {
+            files.emplace_back(n);
+
+            if (files.back().fail())
+                cerr << "Failed to open {}" << endl; // FIXME - include why
+        }
+
+        for (auto& f : files) {
+            if (&f == &files.front())
+                continue;
+
+            if (f.fail())
+                continue;
+
+            device d(f);
+
+            read_superblock(d);
+
+            // FIXME - close irrelevant files
+            if (d.sb.fsid != sb.fsid)
+                continue;
+
+            if (devices.count(d.sb.dev_item.devid) != 0)
+                continue;
+
+            devices.emplace(d.sb.dev_item.devid, move(d));
+        }
+
+        if (devices.size() != sb.num_devices) {
+            if (devices.size() == 1) {
+                throw formatted_error("filesystem has {} devices, unable to find the others",
+                                      sb.num_devices);
+            } else {
+                throw formatted_error("filesystem has {} devices, only able to find {} of them",
+                                      sb.num_devices, devices.size());
             }
         }
-    }
+    } else {
+        if (devices.size() > 1) {
+            for (const auto& [dev_id, d] : devices) {
+                if (d.sb.fsid != sb.fsid) {
+                    throw formatted_error("fsid mismatch (device {} is {}, device {} is {})",
+                                          sb.dev_item.devid, sb.fsid, dev_id,
+                                          d.sb.fsid);
+                }
+            }
+        }
 
-    if (devices.size() != sb.num_devices) {
-        throw formatted_error("filesystem has {} devices, only {} found",
-                              sb.num_devices, devices.size());
+        if (devices.size() != sb.num_devices) {
+            throw formatted_error("filesystem has {} devices, only {} found",
+                                  sb.num_devices, devices.size());
+        }
     }
 
     // FIXME - do we need to check that generation numbers match?
@@ -847,8 +942,6 @@ static void dump(const vector<filesystem::path>& fns) {
 
 int main(int argc, char** argv) {
     bool print_usage = false;
-
-    // FIXME - use libblkid to find other devices
 
     while (true) {
         enum {
