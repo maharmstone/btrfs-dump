@@ -936,7 +936,7 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
     if (!tree_id.has_value())
         cout << endl;
 
-    if (!tree_id.has_value() && sb.log_root != 0) {
+    if ((!tree_id.has_value() || *tree_id == btrfs::TREE_LOG_OBJECTID) && sb.log_root != 0) {
         cout << "LOG:" << endl;
 
         dump_tree(devices, sb.log_root, "", chunks, true, [&log_roots](const btrfs::key& key, span<const uint8_t> item) {
@@ -955,10 +955,12 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
         return;
 
     if (tree_id.has_value()) {
-        if (roots.count(*tree_id) == 0)
-            throw formatted_error("tree {:x} not found", *tree_id);
+        if (*tree_id != btrfs::TREE_LOG_OBJECTID) {
+            if (roots.count(*tree_id) == 0)
+                throw formatted_error("tree {:x} not found", *tree_id);
 
-        dump_tree(devices, roots.at(*tree_id), "", chunks, true);
+            dump_tree(devices, roots.at(*tree_id), "", chunks, true);
+        }
     } else {
         for (auto [root_num, bytenr] : roots) {
             cout << format("Tree {:x}:", (uint64_t)root_num) << endl;
@@ -966,7 +968,9 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
             dump_tree(devices, bytenr, "", chunks, true);
             cout << endl;
         }
+    }
 
+    if (!tree_id.has_value() || *tree_id == btrfs::TREE_LOG_OBJECTID) {
         for (auto [root_num, bytenr] : log_roots) {
             cout << format("Tree {:x} (log):", (uint64_t)root_num) << endl;
 
