@@ -55,8 +55,6 @@ static void read_superblock(device& d) {
 
     d.f.seekg(btrfs::superblock_addrs[0]);
     d.f.read((char*)&d.sb, sizeof(d.sb));
-
-    // FIXME - throw exception if no magic
 }
 
 static const pair<uint64_t, const chunk&> find_chunk(const map<uint64_t, chunk>& chunks,
@@ -805,6 +803,9 @@ static void dump(const vector<filesystem::path>& fns) {
 
         read_superblock(d);
 
+        if (d.sb.magic != btrfs::MAGIC)
+            throw runtime_error("not a btrfs device");
+
         if (devices.count(d.sb.dev_item.devid) != 0)
             throw formatted_error("device {} specified more than once", d.sb.dev_item.devid);
 
@@ -835,6 +836,10 @@ static void dump(const vector<filesystem::path>& fns) {
             read_superblock(d);
 
             // FIXME - close irrelevant files
+
+            if (d.sb.magic != btrfs::MAGIC)
+                continue;
+
             if (d.sb.fsid != sb.fsid)
                 continue;
 
