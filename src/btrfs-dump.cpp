@@ -744,6 +744,9 @@ static void dump(const vector<filesystem::path>& fns) {
 
         read_superblock(d);
 
+        if (devices.count(d.sb.dev_item.devid) != 0)
+            throw formatted_error("device {} specified more than once", d.sb.dev_item.devid);
+
         devices.emplace(d.sb.dev_item.devid, move(d));
     }
 
