@@ -980,6 +980,9 @@ static uint64_t parse_tree_id(string_view sv) {
     uint64_t val;
 
     static const string_view hex_prefix = "0x";
+    static const string_view btrfs_prefix = "btrfs_";
+    static const string_view tree_suffix = "_tree";
+    static const string_view objectid_suffix = "_objectid";
 
     if (sv.starts_with(hex_prefix)) {
         if (auto [ptr, ec] = from_chars(sv.begin() + hex_prefix.size(), sv.end(), val, 16); ptr == sv.end())
@@ -994,71 +997,127 @@ static uint64_t parse_tree_id(string_view sv) {
             return (uint64_t)signed_val;
     }
 
-    // FIXME - string
+    // same logic as tree_id_from_string in btrfs-progs
 
-    throw formatted_error("unable to parse tree ID {}", sv);
+    string s;
+
+    s.reserve(sv.size());
+
+    for (auto c : sv) {
+        if (c >= 'A' && c <= 'Z')
+            c = c - 'A' + 'a';
+
+        s += c;
+    }
+
+    auto orig_sv = sv;
+    sv = s;
+
+    if (sv.starts_with(btrfs_prefix))
+        sv = sv.substr(btrfs_prefix.size());
+
+    if (sv.ends_with(objectid_suffix))
+        sv = sv.substr(0, sv.size() - objectid_suffix.size());
+
+    if (sv.ends_with(tree_suffix))
+        sv = sv.substr(0, sv.size() - tree_suffix.size());
+
+    static const pair<string_view, uint64_t> trees[] = {
+        { "root", btrfs::ROOT_TREE_OBJECTID },
+        { "extent", btrfs::EXTENT_TREE_OBJECTID },
+        { "chunk", btrfs::CHUNK_TREE_OBJECTID },
+        { "device", btrfs::DEV_TREE_OBJECTID },
+        { "dev", btrfs::DEV_TREE_OBJECTID },
+        { "fs", btrfs::FS_TREE_OBJECTID },
+        { "csum", btrfs::CSUM_TREE_OBJECTID },
+        { "checksum", btrfs::CSUM_TREE_OBJECTID },
+        { "quota", btrfs::QUOTA_TREE_OBJECTID },
+        { "uuid", btrfs::UUID_TREE_OBJECTID },
+        { "free_space", btrfs::FREE_SPACE_TREE_OBJECTID },
+        { "free-space", btrfs::FREE_SPACE_TREE_OBJECTID },
+        { "tree_log_fixup", btrfs::TREE_LOG_FIXUP_OBJECTID },
+        { "tree-log-fixup", btrfs::TREE_LOG_FIXUP_OBJECTID },
+        { "tree_log", btrfs::TREE_LOG_OBJECTID },
+        { "tree-log", btrfs::TREE_LOG_OBJECTID },
+        { "tree_reloc", btrfs::TREE_RELOC_OBJECTID },
+        { "tree-reloc", btrfs::TREE_RELOC_OBJECTID },
+        { "data_reloc", btrfs::DATA_RELOC_TREE_OBJECTID },
+        { "data-reloc", btrfs::DATA_RELOC_TREE_OBJECTID },
+        { "block_group", btrfs::BLOCK_GROUP_TREE_OBJECTID },
+        { "block-group", btrfs::BLOCK_GROUP_TREE_OBJECTID },
+        { "raid_stripe", btrfs::RAID_STRIPE_TREE_OBJECTID },
+        { "raid-stripe", btrfs::RAID_STRIPE_TREE_OBJECTID },
+    };
+
+    for (const auto& t : trees) {
+        if (t.first == sv)
+            return t.second;
+    }
+
+    throw formatted_error("unable to parse tree ID {}", orig_sv);
 }
 
 int main(int argc, char** argv) {
     bool print_version = false, print_usage = false;
     optional<uint64_t> tree_id;
 
-    while (true) {
-        enum {
-            GETOPT_VAL_VERSION,
-            GETOPT_VAL_HELP
-        };
+    try {
+        while (true) {
+            enum {
+                GETOPT_VAL_VERSION,
+                GETOPT_VAL_HELP
+            };
 
-        static const option long_opts[] = {
-            { "tree", required_argument, nullptr, 't' },
-            { "version", no_argument, nullptr, GETOPT_VAL_VERSION },
-            { "help", no_argument, nullptr, GETOPT_VAL_HELP },
-            { nullptr, 0, nullptr, 0 }
-        };
+            static const option long_opts[] = {
+                { "tree", required_argument, nullptr, 't' },
+                { "version", no_argument, nullptr, GETOPT_VAL_VERSION },
+                { "help", no_argument, nullptr, GETOPT_VAL_HELP },
+                { nullptr, 0, nullptr, 0 }
+            };
 
-        auto c = getopt_long(argc, argv, "t:", long_opts, nullptr);
-        if (c < 0)
-            break;
+            auto c = getopt_long(argc, argv, "t:", long_opts, nullptr);
+            if (c < 0)
+                break;
 
-        switch (c) {
-            case 't':
-                tree_id = parse_tree_id(optarg);
-                break;
-            case GETOPT_VAL_VERSION:
-                print_version = true;
-                break;
-            case GETOPT_VAL_HELP:
-            case '?':
-                print_usage = true;
-                break;
+            switch (c) {
+                case 't':
+                    tree_id = parse_tree_id(optarg);
+                    break;
+                case GETOPT_VAL_VERSION:
+                    print_version = true;
+                    break;
+                case GETOPT_VAL_HELP:
+                case '?':
+                    print_usage = true;
+                    break;
+            }
         }
-    }
 
-    if (print_version) {
-        cout << "btrfs-dump " << PROJECT_VER << endl;
-        return 0;
-    }
+        if (print_version) {
+            cout << "btrfs-dump " << PROJECT_VER << endl;
+            return 0;
+        }
 
-    if (print_usage || optind == argc) {
-        fprintf(stderr, R"(Usage: btrfs-dump <device> [<device>...]
+        if (print_usage || optind == argc) {
+            cerr << R"(Usage: btrfs-dump <device> [<device>...]
 
-    Dump the metadata of a btrfs image in text format.
+Dump the metadata of a btrfs image in text format.
 
-    Options:
-    -t|--tree <tree_id> print only specified tree (string, decimal, or hexadecimal number)
+Options:
+    -t|--tree <tree_id> print only specified tree (string, decimal, or
+                        hexadecimal number)
     --version           print version string
     --help              print this screen
-)");
-        return 1;
-    }
+)";
+            return 1;
+        }
 
-    vector<filesystem::path> fns;
+        vector<filesystem::path> fns;
 
-    for (int i = optind; i < argc; i++) {
-        fns.emplace_back(argv[i]);
-    }
+        for (int i = optind; i < argc; i++) {
+            fns.emplace_back(argv[i]);
+        }
 
-    try {
         dump(fns, tree_id);
     } catch (const exception& e) {
         cerr << "Exception: " << e.what() << endl;
