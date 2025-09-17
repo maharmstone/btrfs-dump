@@ -673,6 +673,85 @@ static void dump_item(span<const uint8_t> s, string_view pref,
     cout << endl;
 }
 
+static string physical_str(const map<uint64_t, chunk>& chunks, uint64_t addr) {
+    string ret;
+
+    auto& [chunk_start, c] = find_chunk(chunks, addr);
+
+    switch (btrfs::get_chunk_raid_type(c)) {
+        case btrfs::raid_type::RAID5:
+        case btrfs::raid_type::RAID6: {
+//             auto data_stripes = c.num_stripes - 1;
+//
+//             if (btrfs::get_chunk_raid_type(c) == btrfs::raid_type::RAID6)
+//                 data_stripes--;
+//
+//             auto stripeoff = (addr - chunk_start) % (data_stripes * c.stripe_len);
+//             auto parity = (((addr - chunk_start) / (data_stripes * c.stripe_len)) + c.num_stripes - 1) % c.num_stripes;
+//             auto stripe2 = stripeoff / c.stripe_len;
+//             auto stripe = (parity + stripe2 + 1) % c.num_stripes;
+//
+//             if (devices.count(c.stripe[stripe].devid) == 0)
+//                 throw formatted_error("device {} not found", c.stripe[stripe].devid);
+//
+//             auto& d = devices.at(c.stripe[stripe].devid);
+//
+//             d.f.seekg(c.stripe[stripe].offset + (((addr - chunk_start) / (data_stripes * c.stripe_len)) * c.stripe_len) + (stripeoff % c.stripe_len));
+//             d.f.read(ret.data(), size);
+//
+            ret = "?RAID5/6?";
+            break;
+        }
+
+        case btrfs::raid_type::RAID10: {
+//             auto stripe_num = (addr - chunk_start) / c.stripe_len;
+//             auto stripe_offset = (addr - chunk_start) % c.stripe_len;
+//             auto stripe = (stripe_num % (c.num_stripes / c.sub_stripes)) * c.sub_stripes;
+//
+//             if (devices.count(c.stripe[stripe].devid) == 0)
+//                 throw formatted_error("device {} not found", c.stripe[stripe].devid);
+//
+//             auto& d = devices.at(c.stripe[stripe].devid);
+//
+//             d.f.seekg(c.stripe[stripe].offset + ((stripe_num / (c.num_stripes / c.sub_stripes)) * c.stripe_len) + stripe_offset);
+//             d.f.read(ret.data(), size);
+//
+            ret = "?RAID10?";
+            break;
+        }
+
+        case btrfs::raid_type::RAID0: {
+//             auto stripe_num = (addr - chunk_start) / c.stripe_len;
+//             auto stripe_offset = (addr - chunk_start) % c.stripe_len;
+//             auto stripe = stripe_num % c.num_stripes;
+//
+//             if (devices.count(c.stripe[stripe].devid) == 0)
+//                 throw formatted_error("device {} not found", c.stripe[stripe].devid);
+//
+//             auto& d = devices.at(c.stripe[stripe].devid);
+//
+//             d.f.seekg(c.stripe[stripe].offset + ((stripe_num / c.num_stripes) * c.stripe_len) + stripe_offset);
+//             d.f.read(ret.data(), size);
+//
+            ret = "?RAID0?";
+            break;
+        }
+
+        default: { // SINGLE, DUP, RAID1, RAID1C3, RAID1C4
+            for (uint16_t i = 0; i < c.num_stripes; i++) {
+                if (i != 0)
+                    ret += ";";
+
+                ret += format("{},{:x}", c.stripe[i].devid, c.stripe[i].offset + addr - chunk_start);
+            }
+
+            break;
+        }
+    }
+
+    return ret;
+}
+
 static void dump_tree(map<uint64_t, device>& devices, uint64_t addr, string_view pref,
                       const map<uint64_t, chunk>& chunks, bool print,
                       optional<function<void(const btrfs::key&, span<const uint8_t>)>> func = nullopt) {
@@ -687,23 +766,25 @@ static void dump_tree(map<uint64_t, device>& devices, uint64_t addr, string_view
         throw formatted_error("Address mismatch: expected {:x}, got {:x}", addr, h.bytenr);
 
     if (print) {
+        string physical = physical_str(chunks, addr);
+
         // FIXME - make this less hacky (pass csum_type through to formatter?)
         switch (sb.csum_type) {
             case btrfs::csum_type::CRC32:
-                cout << format("{}header {:a}", pref, h) << endl;
+                cout << format("{}header {:a} physical={}", pref, h, physical) << endl;
                 break;
 
             case btrfs::csum_type::XXHASH:
-                cout << format("{}header {:b}", pref, h) << endl;
+                cout << format("{}header {:b} physical={}", pref, h, physical) << endl;
                 break;
 
             case btrfs::csum_type::SHA256:
             case btrfs::csum_type::BLAKE2:
-                cout << format("{}header {:c}", pref, h) << endl;
+                cout << format("{}header {:c} physical={}", pref, h, physical) << endl;
                 break;
 
             default:
-                cout << format("{}header {}", pref, h) << endl;
+                cout << format("{}header {} physical={}", pref, h, physical) << endl;
                 break;
         }
     }
