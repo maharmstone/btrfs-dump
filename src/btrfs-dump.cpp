@@ -721,19 +721,12 @@ static string physical_str(const map<uint64_t, chunk>& chunks, uint64_t addr) {
         }
 
         case btrfs::raid_type::RAID0: {
-//             auto stripe_num = (addr - chunk_start) / c.stripe_len;
-//             auto stripe_offset = (addr - chunk_start) % c.stripe_len;
-//             auto stripe = stripe_num % c.num_stripes;
-//
-//             if (devices.count(c.stripe[stripe].devid) == 0)
-//                 throw formatted_error("device {} not found", c.stripe[stripe].devid);
-//
-//             auto& d = devices.at(c.stripe[stripe].devid);
-//
-//             d.f.seekg(c.stripe[stripe].offset + ((stripe_num / c.num_stripes) * c.stripe_len) + stripe_offset);
-//             d.f.read(ret.data(), size);
-//
-            ret = "?RAID0?";
+            auto stripe_num = (addr - chunk_start) / c.stripe_len;
+            auto stripe_offset = (addr - chunk_start) % c.stripe_len;
+            auto stripe = stripe_num % c.num_stripes;
+
+            ret = format("{},{:x}", c.stripe[stripe].devid,
+                         c.stripe[stripe].offset + ((stripe_num / c.num_stripes) * c.stripe_len) + stripe_offset);
             break;
         }
 
