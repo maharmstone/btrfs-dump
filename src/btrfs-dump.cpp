@@ -987,8 +987,14 @@ static uint64_t parse_tree_id(string_view sv) {
     } else if (auto [ptr, ec] = from_chars(sv.begin(), sv.end(), val); ptr == sv.end())
         return val;
 
+    if (sv.starts_with("-")) {
+        int64_t signed_val;
+
+        if (auto [ptr, ec] = from_chars(sv.begin(), sv.end(), signed_val); ptr == sv.end())
+            return (uint64_t)signed_val;
+    }
+
     // FIXME - string
-    // FIXME - negative numbers
 
     throw formatted_error("unable to parse tree ID {}", sv);
 }
