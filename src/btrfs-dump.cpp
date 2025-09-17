@@ -59,8 +59,12 @@ static string read_data(map<uint64_t, device>& devices, uint64_t addr, uint64_t 
     // FIXME - handle degraded reads?
 
     switch (btrfs::get_chunk_raid_type(c)) {
-        case btrfs::raid_type::RAID5: {
+        case btrfs::raid_type::RAID5:
+        case btrfs::raid_type::RAID6: {
             auto data_stripes = c.num_stripes - 1;
+
+            if (btrfs::get_chunk_raid_type(c) == btrfs::raid_type::RAID6)
+                data_stripes--;
 
             auto stripeoff = (addr - chunk_start) % (data_stripes * c.stripe_len);
             auto parity = (((addr - chunk_start) / (data_stripes * c.stripe_len)) + c.num_stripes - 1) % c.num_stripes;
@@ -77,17 +81,6 @@ static string read_data(map<uint64_t, device>& devices, uint64_t addr, uint64_t 
 
             break;
         }
-
-        case btrfs::raid_type::RAID6:
-        //     my $data_stripes = $obj->{'num_stripes'} - 2;
-        //     $stripeoff = ($addr - $obj->{'offset'}) % ($data_stripes * $obj->{'stripe_len'});
-        //     $parity = (int(($addr - $obj->{'offset'}) / ($data_stripes * $obj->{'stripe_len'})) + $obj->{'num_stripes'} - 1) % $obj->{'num_stripes'};
-        //     $stripe2 = int($stripeoff / $obj->{'stripe_len'});
-        //     $stripe = ($parity + $stripe2 + 1) % $obj->{'num_stripes'};
-        //
-        //     $f = $devs{$obj->{'stripes'}[$stripe]{'devid'}};
-        //     $physoff = $obj->{'stripes'}[$stripe]{'physoffset'} + (int(($addr - $obj->{'offset'}) / ($data_stripes * $obj->{'stripe_len'})) * $obj->{'stripe_len'}) + ($stripeoff % $obj->{'stripe_len'});
-            throw runtime_error("FIXME - RAID6");
 
         case btrfs::raid_type::RAID10:
         //     my $stripe_num = ($addr - $obj->{'offset'}) / $obj->{'stripe_len'};
