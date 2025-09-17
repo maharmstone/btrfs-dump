@@ -3,9 +3,11 @@ cmake_minimum_required(VERSION 3.28)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(btrfs-dump)
+project(btrfs-dump VERSION 20250917)
 
 include(GNUInstallDirs)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 find_package(PkgConfig REQUIRED)
 
@@ -19,6 +21,7 @@ target_sources(btrfs-dump PUBLIC FILE_SET CXX_MODULES FILES
     src/b64.cpp)
 
 target_compile_options(btrfs-dump PUBLIC -Wall -Wextra -Wno-unqualified-std-cast-call -Wno-missing-field-initializers)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(btrfs-dump PkgConfig::BLKID)
 

@@ -8,6 +8,7 @@
 #include <list>
 #include <getopt.h>
 #include <blkid.h>
+#include "config.h"
 
 import cxxbtrfs;
 import formatted_error;
@@ -953,14 +954,16 @@ static void dump(const vector<filesystem::path>& fns) {
 }
 
 int main(int argc, char** argv) {
-    bool print_usage = false;
+    bool print_version = false, print_usage = false;
 
     while (true) {
         enum {
+            GETOPT_VAL_VERSION,
             GETOPT_VAL_HELP
         };
 
         static const option long_opts[] = {
+            { "version", no_argument, nullptr, GETOPT_VAL_VERSION },
             { "help", no_argument, nullptr, GETOPT_VAL_HELP },
             { nullptr, 0, nullptr, 0 }
         };
@@ -970,11 +973,19 @@ int main(int argc, char** argv) {
             break;
 
         switch (c) {
+            case GETOPT_VAL_VERSION:
+                print_version = true;
+                break;
             case GETOPT_VAL_HELP:
             case '?':
                 print_usage = true;
                 break;
         }
+    }
+
+    if (print_version) {
+        cout << "btrfs-dump " << PROJECT_VER << endl;
+        return 0;
     }
 
     if (print_usage || optind == argc) {
@@ -983,6 +994,7 @@ int main(int argc, char** argv) {
     Dump the metadata of a btrfs image in text format.
 
     Options:
+    --version           print version string
     --help              print this screen
 )");
         return 1;
