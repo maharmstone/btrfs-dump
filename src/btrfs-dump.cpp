@@ -699,19 +699,18 @@ static string physical_str(const map<uint64_t, chunk>& chunks, uint64_t addr) {
         }
 
         case btrfs::raid_type::RAID10: {
-//             auto stripe_num = (addr - chunk_start) / c.stripe_len;
-//             auto stripe_offset = (addr - chunk_start) % c.stripe_len;
-//             auto stripe = (stripe_num % (c.num_stripes / c.sub_stripes)) * c.sub_stripes;
-//
-//             if (devices.count(c.stripe[stripe].devid) == 0)
-//                 throw formatted_error("device {} not found", c.stripe[stripe].devid);
-//
-//             auto& d = devices.at(c.stripe[stripe].devid);
-//
-//             d.f.seekg(c.stripe[stripe].offset + ((stripe_num / (c.num_stripes / c.sub_stripes)) * c.stripe_len) + stripe_offset);
-//             d.f.read(ret.data(), size);
-//
-            ret = "?RAID10?";
+            auto stripe_num = (addr - chunk_start) / c.stripe_len;
+            auto stripe_offset = (addr - chunk_start) % c.stripe_len;
+            auto stripe = (stripe_num % (c.num_stripes / c.sub_stripes)) * c.sub_stripes;
+
+            for (uint16_t i = 0; i < c.sub_stripes; i++) {
+                if (i != 0)
+                    ret += ";";
+
+                ret += format("{},{:x}", c.stripe[stripe + i].devid,
+                              c.stripe[stripe + i].offset + ((stripe_num / c.num_stripes) * c.stripe_len) + stripe_offset);
+            }
+
             break;
         }
 
