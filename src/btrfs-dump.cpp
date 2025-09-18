@@ -903,7 +903,7 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
             files.emplace_back(n);
 
             if (files.back().fail())
-                cerr << "Failed to open {}" << endl; // FIXME - include why
+                cerr << format("Failed to open {}", n) << endl; // FIXME - include why
         }
 
         for (auto& f : files) {
