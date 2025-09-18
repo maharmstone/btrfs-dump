@@ -761,6 +761,11 @@ struct dev_replace_item {
     le64 num_uncorrectable_read_errors;
 } __attribute__ ((__packed__));
 
+struct raid_stride {
+    le64 devid;
+    le64 physical;
+} __attribute__ ((__packed__));
+
 enum class raid_type {
     SINGLE,
     RAID0,
@@ -2827,5 +2832,23 @@ struct std::formatter<btrfs::dev_replace_item> {
                          format_unixtime(dri.time_started),
                          format_unixtime(dri.time_stopped), dri.num_write_errors,
                          dri.num_uncorrectable_read_errors);
+    }
+};
+
+template<>
+struct std::formatter<btrfs::raid_stride> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::raid_stride& rs, format_context& ctx) const {
+        return format_to(ctx.out(), "devid={:x} physical={:x}",
+                         rs.devid, rs.physical);
     }
 };

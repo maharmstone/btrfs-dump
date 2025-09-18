@@ -587,7 +587,25 @@ static void dump_item(span<const uint8_t> s, string_view pref,
                 break;
             }
 
-            // FIXME - RAID_STRIPE
+            case RAID_STRIPE: {
+                const auto* rs = (btrfs::raid_stride*)s.data();
+
+                cout << "raid_stripe";
+
+                bool first = true;
+                while (s.size() >= sizeof(btrfs::raid_stride)) {
+                    if (!first)
+                        cout << ";";
+
+                    cout << format(" {}", *rs);
+
+                    s = s.subspan(sizeof(btrfs::raid_stride));
+                    rs++;
+                    first = false;
+                }
+
+                break;
+            }
 
             case QGROUP_STATUS: {
                 const auto& qsi = *(btrfs::qgroup_status_item*)s.data();
