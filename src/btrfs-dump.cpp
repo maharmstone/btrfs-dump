@@ -1192,7 +1192,7 @@ int main(int argc, char** argv) {
         }
 
         if (print_usage || optind == argc) {
-            cerr << R"(Usage: btrfs-dump <device> [<device>...]
+            cerr << R"(Usage: btrfs-dump [options] <device> [<device>...]
 
 Dump the metadata of a btrfs image in text format.
 
