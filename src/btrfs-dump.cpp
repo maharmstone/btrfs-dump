@@ -45,9 +45,10 @@ struct chunk : btrfs::chunk {
 };
 
 struct device {
-    device(ifstream& f) : f(f) { }
+    device(ifstream& f, string_view name) : f(f), name(name) { }
 
     ifstream& f;
+    string name;
     btrfs::super_block sb;
 };
 
@@ -673,7 +674,8 @@ static void dump_item(span<const uint8_t> s, string_view pref,
     cout << endl;
 }
 
-static string physical_str(const map<uint64_t, chunk>& chunks, uint64_t addr) {
+static string physical_str(const map<uint64_t, device>& devices,
+                           const map<uint64_t, chunk>& chunks, uint64_t addr) {
     string ret;
 
     auto& [chunk_start, c] = find_chunk(chunks, addr);
@@ -693,7 +695,7 @@ static string physical_str(const map<uint64_t, chunk>& chunks, uint64_t addr) {
             auto stripe2 = stripeoff / c.stripe_len;
             auto stripe = (parity + stripe2 + 1) % c.num_stripes;
 
-            ret = format("{},{:x}", c.stripe[stripe].devid,
+            ret = format("{},{:x}", devices.at(c.stripe[stripe].devid).name,
                          c.stripe[stripe].offset + (((addr - chunk_start) / (data_stripes * c.stripe_len)) * c.stripe_len) + (stripeoff % c.stripe_len));
             break;
         }
@@ -707,7 +709,7 @@ static string physical_str(const map<uint64_t, chunk>& chunks, uint64_t addr) {
                 if (i != 0)
                     ret += ";";
 
-                ret += format("{},{:x}", c.stripe[stripe + i].devid,
+                ret += format("{},{:x}", devices.at(c.stripe[stripe + i].devid).name,
                               c.stripe[stripe + i].offset + ((stripe_num / c.num_stripes) * c.stripe_len) + stripe_offset);
             }
 
@@ -719,7 +721,7 @@ static string physical_str(const map<uint64_t, chunk>& chunks, uint64_t addr) {
             auto stripe_offset = (addr - chunk_start) % c.stripe_len;
             auto stripe = stripe_num % c.num_stripes;
 
-            ret = format("{},{:x}", c.stripe[stripe].devid,
+            ret = format("{},{:x}", devices.at(c.stripe[stripe].devid).name,
                          c.stripe[stripe].offset + ((stripe_num / c.num_stripes) * c.stripe_len) + stripe_offset);
             break;
         }
@@ -729,7 +731,8 @@ static string physical_str(const map<uint64_t, chunk>& chunks, uint64_t addr) {
                 if (i != 0)
                     ret += ";";
 
-                ret += format("{},{:x}", c.stripe[i].devid, c.stripe[i].offset + addr - chunk_start);
+                ret += format("{},{:x}", devices.at(c.stripe[i].devid).name,
+                              c.stripe[i].offset + addr - chunk_start);
             }
 
             break;
@@ -753,7 +756,7 @@ static void dump_tree(map<uint64_t, device>& devices, uint64_t addr, string_view
         throw formatted_error("Address mismatch: expected {:x}, got {:x}", addr, h.bytenr);
 
     if (print) {
-        string physical = physical_str(chunks, addr);
+        string physical = physical_str(devices, chunks, addr);
 
         // FIXME - make this less hacky (pass csum_type through to formatter?)
         switch (sb.csum_type) {
@@ -869,18 +872,18 @@ static vector<string> find_devices(const btrfs::uuid& fsid) {
 
 static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id) {
     map<int64_t, uint64_t> roots, log_roots;
-    list<ifstream> files;
+    list<pair<ifstream, string>> files;
     map<uint64_t, device> devices;
 
     for (const auto& p : fns) {
-        files.emplace_back(p);
+        files.emplace_back(p, p.string());
 
-        if (files.back().fail())
+        if (files.back().first.fail())
             throw formatted_error("Failed to open {}", p.string()); // FIXME - include why
     }
 
     for (auto& f : files) {
-        device d(f);
+        device d(f.first, f.second);
 
         read_superblock(d);
 
@@ -899,9 +902,9 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
         auto other_fns = find_devices(sb.fsid);
 
         for (const auto& n : other_fns) {
-            files.emplace_back(n);
+            files.emplace_back(n, n);
 
-            if (files.back().fail())
+            if (files.back().first.fail())
                 cerr << format("Failed to open {}", n) << endl; // FIXME - include why
         }
 
@@ -909,10 +912,10 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
             if (&f == &files.front())
                 continue;
 
-            if (f.fail())
+            if (f.first.fail())
                 continue;
 
-            device d(f);
+            device d(f.first, f.second);
 
             read_superblock(d);
 
