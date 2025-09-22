@@ -761,7 +761,7 @@ static string physical_str(const map<uint64_t, device>& devices,
 }
 
 static void dump_tree(map<uint64_t, device>& devices, uint64_t addr, string_view pref,
-                      const map<uint64_t, chunk>& chunks, bool print,
+                      const map<uint64_t, chunk>& chunks, bool print, bool print_physical,
                       optional<function<void(const btrfs::key&, span<const uint8_t>)>> func = nullopt) {
     const auto& sb = devices.begin()->second.sb;
     auto tree = read_data(devices, addr, sb.nodesize, chunks);
@@ -774,27 +774,30 @@ static void dump_tree(map<uint64_t, device>& devices, uint64_t addr, string_view
         throw formatted_error("Address mismatch: expected {:x}, got {:x}", addr, h.bytenr);
 
     if (print) {
-        string physical = physical_str(devices, chunks, addr);
-
         // FIXME - make this less hacky (pass csum_type through to formatter?)
         switch (sb.csum_type) {
             case btrfs::csum_type::CRC32:
-                cout << format("{}header {:a} physical={}", pref, h, physical) << endl;
+                cout << format("{}header {:a}", pref, h);
                 break;
 
             case btrfs::csum_type::XXHASH:
-                cout << format("{}header {:b} physical={}", pref, h, physical) << endl;
+                cout << format("{}header {:b}", pref, h);
                 break;
 
             case btrfs::csum_type::SHA256:
             case btrfs::csum_type::BLAKE2:
-                cout << format("{}header {:c} physical={}", pref, h, physical) << endl;
+                cout << format("{}header {:c}", pref, h);
                 break;
 
             default:
-                cout << format("{}header {} physical={}", pref, h, physical) << endl;
+                cout << format("{}header {}", pref, h);
                 break;
         }
+
+        if (print_physical)
+            cout << format(" physical={}", physical_str(devices, chunks, addr));
+
+        cout << endl;
     }
 
     if (h.level == 0) {
@@ -818,7 +821,8 @@ static void dump_tree(map<uint64_t, device>& devices, uint64_t addr, string_view
 
         for (const auto& it : items) {
             cout << format("{}{}\n", pref, it);
-            dump_tree(devices, it.blockptr, pref2, chunks, print, func);
+            dump_tree(devices, it.blockptr, pref2, chunks, print,
+                      print_physical, func);
         }
     }
 }
@@ -888,7 +892,8 @@ static vector<string> find_devices(const btrfs::uuid& fsid) {
 }
 
 
-static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id) {
+static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id,
+                 bool print_physical) {
     map<int64_t, uint64_t> roots, log_roots;
     list<pair<ifstream, string>> files;
     map<uint64_t, device> devices;
@@ -989,8 +994,9 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
 
     map<uint64_t, chunk> chunks;
 
-    dump_tree(devices, sb.chunk_root, "", sys_chunks, !tree_id.has_value() || *tree_id == btrfs::CHUNK_TREE_OBJECTID,
-              [&chunks](const btrfs::key& key, span<const uint8_t> item) {
+    dump_tree(devices, sb.chunk_root, "", sys_chunks,
+              !tree_id.has_value() || *tree_id == btrfs::CHUNK_TREE_OBJECTID,
+              print_physical, [&chunks](const btrfs::key& key, span<const uint8_t> item) {
         if (key.type != btrfs::key_type::CHUNK_ITEM)
             return;
 
@@ -1012,8 +1018,9 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
         cout << "ROOT:" << endl;
     }
 
-    dump_tree(devices, sb.root, "", chunks, !tree_id.has_value() || *tree_id == btrfs::ROOT_TREE_OBJECTID,
-              [&roots](const btrfs::key& key, span<const uint8_t> item) {
+    dump_tree(devices, sb.root, "", chunks,
+              !tree_id.has_value() || *tree_id == btrfs::ROOT_TREE_OBJECTID,
+              print_physical, [&roots](const btrfs::key& key, span<const uint8_t> item) {
         if (key.type != btrfs::key_type::ROOT_ITEM)
             return;
 
@@ -1028,7 +1035,8 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
     if ((!tree_id.has_value() || *tree_id == btrfs::TREE_LOG_OBJECTID) && sb.log_root != 0) {
         cout << "LOG:" << endl;
 
-        dump_tree(devices, sb.log_root, "", chunks, true, [&log_roots](const btrfs::key& key, span<const uint8_t> item) {
+        dump_tree(devices, sb.log_root, "", chunks, true, print_physical,
+                  [&log_roots](const btrfs::key& key, span<const uint8_t> item) {
             if (key.type != btrfs::key_type::ROOT_ITEM)
                 return;
 
@@ -1048,13 +1056,14 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
             if (roots.count(*tree_id) == 0)
                 throw formatted_error("tree {:x} not found", *tree_id);
 
-            dump_tree(devices, roots.at(*tree_id), "", chunks, true);
+            dump_tree(devices, roots.at(*tree_id), "", chunks, true,
+                      print_physical);
         }
     } else {
         for (auto [root_num, bytenr] : roots) {
             cout << format("Tree {:x}:", (uint64_t)root_num) << endl;
 
-            dump_tree(devices, bytenr, "", chunks, true);
+            dump_tree(devices, bytenr, "", chunks, true, print_physical);
             cout << endl;
         }
     }
@@ -1063,7 +1072,7 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
         for (auto [root_num, bytenr] : log_roots) {
             cout << format("Tree {:x} (log):", (uint64_t)root_num) << endl;
 
-            dump_tree(devices, bytenr, "", chunks, true);
+            dump_tree(devices, bytenr, "", chunks, true, print_physical);
             cout << endl;
         }
     }
@@ -1151,7 +1160,7 @@ static uint64_t parse_tree_id(string_view sv) {
 }
 
 int main(int argc, char** argv) {
-    bool print_version = false, print_usage = false;
+    bool print_version = false, print_usage = false, print_physical = false;
     optional<uint64_t> tree_id;
 
     try {
@@ -1163,16 +1172,20 @@ int main(int argc, char** argv) {
 
             static const option long_opts[] = {
                 { "tree", required_argument, nullptr, 't' },
+                { "physical", no_argument, nullptr, 'p' },
                 { "version", no_argument, nullptr, GETOPT_VAL_VERSION },
                 { "help", no_argument, nullptr, GETOPT_VAL_HELP },
                 { nullptr, 0, nullptr, 0 }
             };
 
-            auto c = getopt_long(argc, argv, "t:", long_opts, nullptr);
+            auto c = getopt_long(argc, argv, "pt:", long_opts, nullptr);
             if (c < 0)
                 break;
 
             switch (c) {
+                case 'p':
+                    print_physical = true;
+                    break;
                 case 't':
                     tree_id = parse_tree_id(optarg);
                     break;
@@ -1199,6 +1212,7 @@ Dump the metadata of a btrfs image in text format.
 Options:
     -t|--tree <tree_id> print only specified tree (string, decimal, or
                         hexadecimal number)
+    -p|--physical       include physical addresses in tree headers
     --version           print version string
     --help              print this screen
 )";
@@ -1211,7 +1225,7 @@ Options:
             fns.emplace_back(argv[i]);
         }
 
-        dump(fns, tree_id);
+        dump(fns, tree_id, print_physical);
     } catch (const exception& e) {
         cerr << "Exception: " << e.what() << endl;
     }
