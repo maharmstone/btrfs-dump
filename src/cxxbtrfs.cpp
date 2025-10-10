@@ -592,6 +592,11 @@ struct block_group_item {
     le64 flags;
 } __attribute__ ((__packed__));
 
+struct block_group_item_v2 : block_group_item {
+    le64 remap_bytes;
+    le32 identity_remap_count;
+} __attribute__ ((__packed__));
+
 struct free_space_info {
     le32 extent_count;
     le32 flags;
@@ -2004,6 +2009,25 @@ struct std::formatter<btrfs::block_group_item> {
     auto format(const btrfs::block_group_item& bgi, format_context& ctx) const {
         return format_to(ctx.out(), "used={:x} chunk_objectid={:x} flags={}",
                          bgi.used, bgi.chunk_objectid, block_group_item_flags(bgi.flags));
+    }
+};
+
+template<>
+struct std::formatter<btrfs::block_group_item_v2> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::block_group_item_v2& bgi, format_context& ctx) const {
+        return format_to(ctx.out(), "{} remap_bytes={:x} identity_remap_count={:x}",
+                         static_cast<const btrfs::block_group_item&>(bgi),
+                         bgi.remap_bytes, bgi.identity_remap_count);
     }
 };
 

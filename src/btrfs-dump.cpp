@@ -555,11 +555,19 @@ static void dump_item(span<const uint8_t> s, string_view pref,
             }
 
             case BLOCK_GROUP_ITEM: {
-                const auto& bgi = *(btrfs::block_group_item*)s.data();
+                if (sb.incompat_flags & btrfs::FEATURE_INCOMPAT_REMAP_TREE) {
+                    const auto& bgi = *(btrfs::block_group_item_v2*)s.data();
 
-                cout << format("block_group_item {}", bgi);
+                    cout << format("block_group_item {}", bgi);
 
-                s = s.subspan(sizeof(btrfs::block_group_item));
+                    s = s.subspan(sizeof(btrfs::block_group_item_v2));
+                } else {
+                    const auto& bgi = *(btrfs::block_group_item*)s.data();
+
+                    cout << format("block_group_item {}", bgi);
+
+                    s = s.subspan(sizeof(btrfs::block_group_item));
+                }
                 break;
             }
 
