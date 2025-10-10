@@ -59,8 +59,6 @@ struct fs_info {
 };
 
 static void read_superblock(device& d) {
-    string csum;
-
     d.f.seekg(btrfs::superblock_addrs[0]);
     d.f.read((char*)&d.sb, sizeof(d.sb));
 }
