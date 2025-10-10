@@ -55,6 +55,7 @@ struct device {
 struct fs_info {
     map<uint64_t, device> devices;
     map<uint64_t, chunk> chunks, sys_chunks;
+    map<uint64_t, pair<uint64_t, uint64_t>> remaps;
 };
 
 static void read_superblock(device& d) {
@@ -85,8 +86,19 @@ static string read_data(const fs_info& info, uint64_t addr, uint64_t size,
     auto& [chunk_start, c] = find_chunk(chunks, addr);
 
     if (!ignore_remap && c.type & btrfs::BLOCK_GROUP_REMAPPED) {
-        // FIXME
-        throw runtime_error("FIXME - remapping");
+        auto it = info.remaps.upper_bound(addr);
+
+        if (it == info.remaps.begin())
+            throw formatted_error("could not find address {:x} in remap tree", addr);
+
+        const auto& r = *prev(it);
+
+        if (r.first + r.second.first <= addr)
+            throw formatted_error("could not find address {:x} in remap tree", addr);
+
+        auto new_addr = addr - r.first + r.second.second;
+
+        return read_data(info, new_addr, size, true);
     }
 
     string ret;
@@ -1026,11 +1038,9 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
     if (!tree_id.has_value())
         cout << "CHUNK:" << endl;
 
-    map<uint64_t, chunk> chunks;
-
     dump_tree(info, sb.chunk_root, "",
               !tree_id.has_value() || *tree_id == btrfs::CHUNK_TREE_OBJECTID,
-              print_physical, [&chunks](const btrfs::key& key, span<const uint8_t> item) {
+              print_physical, [&info](const btrfs::key& key, span<const uint8_t> item) {
         if (key.type != btrfs::key_type::CHUNK_ITEM)
             return;
 
@@ -1044,7 +1054,7 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
                                   c.num_stripes, MAX_STRIPES);
         }
 
-        chunks.insert(make_pair((uint64_t)key.offset, c));
+        info.chunks.insert(make_pair((uint64_t)key.offset, c));
     });
 
     if (!tree_id.has_value())
@@ -1056,8 +1066,25 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
 
         dump_tree(info, sb.remap_root, "",
                   !tree_id.has_value() || *tree_id == btrfs::REMAP_TREE_OBJECTID,
-                  print_physical, [](const btrfs::key& key, span<const uint8_t> item) {
-            // FIXME
+                  print_physical, [&info](const btrfs::key& key, span<const uint8_t> item) {
+            switch (key.type) {
+                case btrfs::key_type::REMAP: {
+                    const auto& r = *(btrfs::remap*)item.data();
+
+                    if (item.size() < sizeof(btrfs::remap))
+                        throw runtime_error("remap item truncated");
+
+                    info.remaps.insert(make_pair(key.objectid, make_pair(key.offset, r.address)));
+                    break;
+                }
+
+                case btrfs::key_type::IDENTITY_REMAP:
+                    info.remaps.insert(make_pair(key.objectid, make_pair(key.offset, key.objectid)));
+                    break;
+
+                default:
+                    break;
+            }
         });
 
         if (!tree_id.has_value())
