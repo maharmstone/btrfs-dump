@@ -54,6 +54,7 @@ struct device {
 
 struct fs_info {
     map<uint64_t, device> devices;
+    map<uint64_t, chunk> chunks, sys_chunks;
 };
 
 static void read_superblock(device& d) {
@@ -79,7 +80,8 @@ static const pair<uint64_t, const chunk&> find_chunk(const map<uint64_t, chunk>&
 }
 
 static string read_data(const fs_info& info, uint64_t addr, uint64_t size,
-                        const map<uint64_t, chunk>& chunks, bool ignore_remap) {
+                        bool ignore_remap) {
+    auto& chunks = info.chunks.empty() ? info.sys_chunks : info.chunks;
     auto& [chunk_start, c] = find_chunk(chunks, addr);
 
     if (!ignore_remap && c.type & btrfs::BLOCK_GROUP_REMAPPED) {
@@ -725,11 +727,10 @@ static void dump_item(span<const uint8_t> s, string_view pref,
     cout << endl;
 }
 
-static string physical_str(const map<uint64_t, device>& devices,
-                           const map<uint64_t, chunk>& chunks, uint64_t addr) {
+static string physical_str(const fs_info& info, uint64_t addr) {
     string ret;
 
-    auto& [chunk_start, c] = find_chunk(chunks, addr);
+    auto& [chunk_start, c] = find_chunk(info.chunks, addr);
 
     // FIXME - device names rather than numbers?
 
@@ -746,7 +747,7 @@ static string physical_str(const map<uint64_t, device>& devices,
             auto stripe2 = stripeoff / c.stripe_len;
             auto stripe = (parity + stripe2 + 1) % c.num_stripes;
 
-            ret = format("{},{:x}", devices.at(c.stripe[stripe].devid).name,
+            ret = format("{},{:x}", info.devices.at(c.stripe[stripe].devid).name,
                          c.stripe[stripe].offset + (((addr - chunk_start) / (data_stripes * c.stripe_len)) * c.stripe_len) + (stripeoff % c.stripe_len));
             break;
         }
@@ -760,7 +761,7 @@ static string physical_str(const map<uint64_t, device>& devices,
                 if (i != 0)
                     ret += ";";
 
-                ret += format("{},{:x}", devices.at(c.stripe[stripe + i].devid).name,
+                ret += format("{},{:x}", info.devices.at(c.stripe[stripe + i].devid).name,
                               c.stripe[stripe + i].offset + ((stripe_num / c.num_stripes) * c.stripe_len) + stripe_offset);
             }
 
@@ -772,7 +773,7 @@ static string physical_str(const map<uint64_t, device>& devices,
             auto stripe_offset = (addr - chunk_start) % c.stripe_len;
             auto stripe = stripe_num % c.num_stripes;
 
-            ret = format("{},{:x}", devices.at(c.stripe[stripe].devid).name,
+            ret = format("{},{:x}", info.devices.at(c.stripe[stripe].devid).name,
                          c.stripe[stripe].offset + ((stripe_num / c.num_stripes) * c.stripe_len) + stripe_offset);
             break;
         }
@@ -782,7 +783,7 @@ static string physical_str(const map<uint64_t, device>& devices,
                 if (i != 0)
                     ret += ";";
 
-                ret += format("{},{:x}", devices.at(c.stripe[i].devid).name,
+                ret += format("{},{:x}", info.devices.at(c.stripe[i].devid).name,
                               c.stripe[i].offset + addr - chunk_start);
             }
 
@@ -794,10 +795,10 @@ static string physical_str(const map<uint64_t, device>& devices,
 }
 
 static void dump_tree(const fs_info& info, uint64_t addr, string_view pref,
-                      const map<uint64_t, chunk>& chunks, bool print, bool print_physical,
+                      bool print, bool print_physical,
                       optional<function<void(const btrfs::key&, span<const uint8_t>)>> func = nullopt) {
     const auto& sb = info.devices.begin()->second.sb;
-    auto tree = read_data(info, addr, sb.nodesize, chunks, false);
+    auto tree = read_data(info, addr, sb.nodesize, false);
 
     const auto& h = *(btrfs::header*)tree.data();
 
@@ -828,7 +829,7 @@ static void dump_tree(const fs_info& info, uint64_t addr, string_view pref,
         }
 
         if (print_physical)
-            cout << format(" physical={}", physical_str(info.devices, chunks, addr));
+            cout << format(" physical={}", physical_str(info, addr));
 
         cout << endl;
     }
@@ -854,8 +855,7 @@ static void dump_tree(const fs_info& info, uint64_t addr, string_view pref,
 
         for (const auto& it : items) {
             cout << format("{}{}\n", pref, it);
-            dump_tree(info, it.blockptr, pref2, chunks, print,
-                      print_physical, func);
+            dump_tree(info, it.blockptr, pref2, print, print_physical, func);
         }
     }
 }
@@ -1021,14 +1021,14 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
     if (!tree_id.has_value())
         cout << format("superblock {}", sb) << endl;
 
-    auto sys_chunks = load_sys_chunks(sb);
+    info.sys_chunks = load_sys_chunks(sb);
 
     if (!tree_id.has_value())
         cout << "CHUNK:" << endl;
 
     map<uint64_t, chunk> chunks;
 
-    dump_tree(info, sb.chunk_root, "", sys_chunks,
+    dump_tree(info, sb.chunk_root, "",
               !tree_id.has_value() || *tree_id == btrfs::CHUNK_TREE_OBJECTID,
               print_physical, [&chunks](const btrfs::key& key, span<const uint8_t> item) {
         if (key.type != btrfs::key_type::CHUNK_ITEM)
@@ -1054,7 +1054,7 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
         if (!tree_id.has_value())
             cout << "REMAP:" << endl;
 
-        dump_tree(info, sb.remap_root, "", chunks,
+        dump_tree(info, sb.remap_root, "",
                   !tree_id.has_value() || *tree_id == btrfs::REMAP_TREE_OBJECTID,
                   print_physical, [](const btrfs::key& key, span<const uint8_t> item) {
             // FIXME
@@ -1067,7 +1067,7 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
     if (!tree_id.has_value())
         cout << "ROOT:" << endl;
 
-    dump_tree(info, sb.root, "", chunks,
+    dump_tree(info, sb.root, "",
               !tree_id.has_value() || *tree_id == btrfs::ROOT_TREE_OBJECTID,
               print_physical, [&roots](const btrfs::key& key, span<const uint8_t> item) {
         if (key.type != btrfs::key_type::ROOT_ITEM)
@@ -1084,7 +1084,7 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
     if ((!tree_id.has_value() || *tree_id == btrfs::TREE_LOG_OBJECTID) && sb.log_root != 0) {
         cout << "LOG:" << endl;
 
-        dump_tree(info, sb.log_root, "", chunks, true, print_physical,
+        dump_tree(info, sb.log_root, "", true, print_physical,
                   [&log_roots](const btrfs::key& key, span<const uint8_t> item) {
             if (key.type != btrfs::key_type::ROOT_ITEM)
                 return;
@@ -1105,7 +1105,7 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
             if (roots.count(*tree_id) == 0)
                 throw formatted_error("tree {:x} not found", *tree_id);
 
-            dump_tree(info, roots.at(*tree_id), "", chunks, true,
+            dump_tree(info, roots.at(*tree_id), "", true,
                       print_physical);
         }
     } else {
@@ -1115,7 +1115,7 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
 
             cout << format("Tree {:x}:", (uint64_t)root_num) << endl;
 
-            dump_tree(info, bytenr, "", chunks, true, print_physical);
+            dump_tree(info, bytenr, "", true, print_physical);
             cout << endl;
         }
     }
@@ -1124,7 +1124,7 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
         for (auto [root_num, bytenr] : log_roots) {
             cout << format("Tree {:x} (log):", (uint64_t)root_num) << endl;
 
-            dump_tree(info, bytenr, "", chunks, true, print_physical);
+            dump_tree(info, bytenr, "", true, print_physical);
             cout << endl;
         }
     }
