@@ -74,8 +74,14 @@ static const pair<uint64_t, const chunk&> find_chunk(const map<uint64_t, chunk>&
     return p;
 }
 
-static string read_data(map<uint64_t, device>& devices, uint64_t addr, uint64_t size, const map<uint64_t, chunk>& chunks) {
+static string read_data(map<uint64_t, device>& devices, uint64_t addr, uint64_t size,
+                        const map<uint64_t, chunk>& chunks, bool ignore_remap) {
     auto& [chunk_start, c] = find_chunk(chunks, addr);
+
+    if (!ignore_remap && c.type & btrfs::BLOCK_GROUP_REMAPPED) {
+        // FIXME
+        throw runtime_error("FIXME - remapping");
+    }
 
     string ret;
 
@@ -607,6 +613,29 @@ static void dump_item(span<const uint8_t> s, string_view pref,
                 break;
             }
 
+            case IDENTITY_REMAP: {
+                cout << format("identity_remap");
+                break;
+            }
+
+            case REMAP: {
+                const auto& r = *(btrfs::remap*)s.data();
+
+                cout << format("remap {}", r);
+
+                s = s.subspan(sizeof(btrfs::remap));
+                break;
+            }
+
+            case REMAP_BACKREF: {
+                const auto& r = *(btrfs::remap*)s.data();
+
+                cout << format("remap_backref {}", r);
+
+                s = s.subspan(sizeof(btrfs::remap));
+                break;
+            }
+
             case QGROUP_STATUS: {
                 const auto& qsi = *(btrfs::qgroup_status_item*)s.data();
 
@@ -764,7 +793,7 @@ static void dump_tree(map<uint64_t, device>& devices, uint64_t addr, string_view
                       const map<uint64_t, chunk>& chunks, bool print, bool print_physical,
                       optional<function<void(const btrfs::key&, span<const uint8_t>)>> func = nullopt) {
     const auto& sb = devices.begin()->second.sb;
-    auto tree = read_data(devices, addr, sb.nodesize, chunks);
+    auto tree = read_data(devices, addr, sb.nodesize, chunks, false);
 
     const auto& h = *(btrfs::header*)tree.data();
 
@@ -1013,10 +1042,25 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
         chunks.insert(make_pair((uint64_t)key.offset, c));
     });
 
-    if (!tree_id.has_value()) {
+    if (!tree_id.has_value())
         cout << endl;
-        cout << "ROOT:" << endl;
+
+    if (sb.incompat_flags & btrfs::FEATURE_INCOMPAT_REMAP_TREE) {
+        if (!tree_id.has_value())
+            cout << "REMAP:" << endl;
+
+        dump_tree(devices, sb.remap_root, "", chunks,
+                  !tree_id.has_value() || *tree_id == btrfs::REMAP_TREE_OBJECTID,
+                  print_physical, [](const btrfs::key& key, span<const uint8_t> item) {
+            // FIXME
+        });
+
+        if (!tree_id.has_value())
+            cout << endl;
     }
+
+    if (!tree_id.has_value())
+        cout << "ROOT:" << endl;
 
     dump_tree(devices, sb.root, "", chunks,
               !tree_id.has_value() || *tree_id == btrfs::ROOT_TREE_OBJECTID,
@@ -1048,7 +1092,7 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
         cout << endl;
     }
 
-    if (tree_id.has_value() && (*tree_id == btrfs::ROOT_TREE_OBJECTID || *tree_id == btrfs::CHUNK_TREE_OBJECTID))
+    if (tree_id.has_value() && (*tree_id == btrfs::ROOT_TREE_OBJECTID || *tree_id == btrfs::CHUNK_TREE_OBJECTID || *tree_id == btrfs::REMAP_TREE_OBJECTID))
         return;
 
     if (tree_id.has_value()) {
@@ -1061,6 +1105,9 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
         }
     } else {
         for (auto [root_num, bytenr] : roots) {
+            if (sb.incompat_flags & btrfs::FEATURE_INCOMPAT_REMAP_TREE && root_num == btrfs::REMAP_TREE_OBJECTID)
+                continue;
+
             cout << format("Tree {:x}:", (uint64_t)root_num) << endl;
 
             dump_tree(devices, bytenr, "", chunks, true, print_physical);
