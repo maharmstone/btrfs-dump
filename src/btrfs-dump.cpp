@@ -748,9 +748,10 @@ static void dump_item(span<const uint8_t> s, string_view pref,
 }
 
 static string physical_str(const fs_info& info, uint64_t addr) {
+    auto& chunks = info.chunks.empty() ? info.sys_chunks : info.chunks;
     string ret;
 
-    auto& [chunk_start, c] = find_chunk(info.chunks, addr);
+    auto& [chunk_start, c] = find_chunk(chunks, addr);
 
     // FIXME - device names rather than numbers?
 
