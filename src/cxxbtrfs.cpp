@@ -172,6 +172,7 @@ constexpr uint64_t BLOCK_GROUP_RAID1C3 = 1 << 9;
 constexpr uint64_t BLOCK_GROUP_RAID1C4 = 1 << 10;
 constexpr uint64_t BLOCK_GROUP_REMAPPED = 1 << 11;
 constexpr uint64_t BLOCK_GROUP_REMAP = 1 << 12;
+constexpr uint64_t BLOCK_GROUP_STRIPE_REMOVAL_PENDING = 1 << 13;
 
 constexpr uint64_t FIRST_CHUNK_TREE_OBJECTID = 0x100;
 
@@ -1072,8 +1073,6 @@ struct std::formatter<btrfs::dev_item> {
 string block_group_item_flags(uint64_t f) {
     string ret;
 
-    // FIXME - REMAPPED, REMAP
-
     if (f & btrfs::BLOCK_GROUP_DATA) {
         ret = "data";
         f &= ~btrfs::BLOCK_GROUP_DATA;
@@ -1157,6 +1156,30 @@ string block_group_item_flags(uint64_t f) {
 
         ret += "raid1c4";
         f &= ~btrfs::BLOCK_GROUP_RAID1C4;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_REMAP) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "remap";
+        f &= ~btrfs::BLOCK_GROUP_REMAP;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_REMAPPED) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "remapped";
+        f &= ~btrfs::BLOCK_GROUP_REMAPPED;
+    }
+
+    if (f & btrfs::BLOCK_GROUP_STRIPE_REMOVAL_PENDING) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "stripe_removal_pending";
+        f &= ~btrfs::BLOCK_GROUP_STRIPE_REMOVAL_PENDING;
     }
 
     if (ret.empty())
@@ -1532,12 +1555,17 @@ struct std::formatter<btrfs::super_block> {
         if (auto nul = label.find_first_of('\x00'); nul != string_view::npos)
             label = label.substr(0, nul);
 
-        auto r = format_to(ctx.out(), "csum={} fsid={} bytenr={:x} flags={} magic={} generation={:x} root={:x} chunk_root={:x} log_root={:x} log_root_transid={:x} total_bytes={:x} bytes_used={:x} root_dir_objectid={:x} num_devices={:x} sectorsize={:x} nodesize={:x} leafsize={:x} stripesize={:x} sys_chunk_array_size={:x} chunk_root_generation={:x} compat_flags={:x} compat_ro_flags={} incompat_flags={} csum_type={} root_level={:x} chunk_root_level={:x} log_root_level={:x} (dev_item {}) label={} cache_generation={:x} uuid_tree_generation={:x} metadata_uuid={}\n", csum, sb.fsid, sb.bytenr, format_super_flags(sb.flags), magic, sb.generation, sb.root, sb.chunk_root, sb.log_root, sb.__unused_log_root_transid, sb.total_bytes, sb.bytes_used, sb.root_dir_objectid, sb.num_devices, sb.sectorsize, sb.nodesize, sb.__unused_leafsize, sb.stripesize, sb.sys_chunk_array_size, sb.chunk_root_generation, sb.compat_flags, compat_ro_flags(sb.compat_ro_flags), incompat_flags(sb.incompat_flags), sb.csum_type, sb.root_level, sb.chunk_root_level, sb.log_root_level, sb.dev_item, label, sb.cache_generation, sb.uuid_tree_generation, sb.metadata_uuid);
+        auto r = format_to(ctx.out(), "csum={} fsid={} bytenr={:x} flags={} magic={} generation={:x} root={:x} chunk_root={:x} log_root={:x} log_root_transid={:x} total_bytes={:x} bytes_used={:x} root_dir_objectid={:x} num_devices={:x} sectorsize={:x} nodesize={:x} leafsize={:x} stripesize={:x} sys_chunk_array_size={:x} chunk_root_generation={:x} compat_flags={:x} compat_ro_flags={} incompat_flags={} csum_type={} root_level={:x} chunk_root_level={:x} log_root_level={:x} (dev_item {}) label={} cache_generation={:x} uuid_tree_generation={:x} metadata_uuid={}", csum, sb.fsid, sb.bytenr, format_super_flags(sb.flags), magic, sb.generation, sb.root, sb.chunk_root, sb.log_root, sb.__unused_log_root_transid, sb.total_bytes, sb.bytes_used, sb.root_dir_objectid, sb.num_devices, sb.sectorsize, sb.nodesize, sb.__unused_leafsize, sb.stripesize, sb.sys_chunk_array_size, sb.chunk_root_generation, sb.compat_flags, compat_ro_flags(sb.compat_ro_flags), incompat_flags(sb.incompat_flags), sb.csum_type, sb.root_level, sb.chunk_root_level, sb.log_root_level, sb.dev_item, label, sb.cache_generation, sb.uuid_tree_generation, sb.metadata_uuid);
 
         // FIXME - nr_global_roots
-        // FIXME - remap_root
-        // FIXME - remap_root_generation
-        // FIXME - remap_root_level
+
+        if (sb.incompat_flags & btrfs::FEATURE_INCOMPAT_REMAP_TREE) {
+            r = format_to(r, " remap_root={:x} remap_root_generation={:x} remap_root_level={:x}",
+                          sb.remap_root, sb.remap_root_generation,
+                          sb.remap_root_level);
+        }
+
+        r = format_to(r, "\n");
 
         auto bootstrap = span(sb.sys_chunk_array.data(), sb.sys_chunk_array_size);
 
@@ -2850,5 +2878,22 @@ struct std::formatter<btrfs::raid_stride> {
     auto format(const btrfs::raid_stride& rs, format_context& ctx) const {
         return format_to(ctx.out(), "devid={:x} physical={:x}",
                          rs.devid, rs.physical);
+    }
+};
+
+template<>
+struct std::formatter<btrfs::remap> {
+    constexpr auto parse(format_parse_context& ctx) {
+        auto it = ctx.begin();
+
+        if (it != ctx.end() && *it != '}')
+            throw format_error("invalid format");
+
+        return it;
+    }
+
+    template<typename format_context>
+    auto format(const btrfs::remap& r, format_context& ctx) const {
+        return format_to(ctx.out(), "{:x}", r.address);
     }
 };
