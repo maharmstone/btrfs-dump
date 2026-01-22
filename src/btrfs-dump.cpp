@@ -643,20 +643,20 @@ static void dump_item(span<const uint8_t> s, string_view pref,
             }
 
             case REMAP: {
-                const auto& r = *(btrfs::remap*)s.data();
+                const auto& r = *(btrfs::remap_item*)s.data();
 
                 cout << format("remap {}", r);
 
-                s = s.subspan(sizeof(btrfs::remap));
+                s = s.subspan(sizeof(btrfs::remap_item));
                 break;
             }
 
             case REMAP_BACKREF: {
-                const auto& r = *(btrfs::remap*)s.data();
+                const auto& r = *(btrfs::remap_item*)s.data();
 
                 cout << format("remap_backref {}", r);
 
-                s = s.subspan(sizeof(btrfs::remap));
+                s = s.subspan(sizeof(btrfs::remap_item));
                 break;
             }
 
@@ -1076,9 +1076,9 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
                   print_physical, [&info](const btrfs::key& key, span<const uint8_t> item) {
             switch (key.type) {
                 case btrfs::key_type::REMAP: {
-                    const auto& r = *(btrfs::remap*)item.data();
+                    const auto& r = *(btrfs::remap_item*)item.data();
 
-                    if (item.size() < sizeof(btrfs::remap))
+                    if (item.size() < sizeof(btrfs::remap_item))
                         throw runtime_error("remap item truncated");
 
                     info.remaps.insert(make_pair(key.objectid, make_pair(key.offset, r.address)));

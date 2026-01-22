@@ -550,7 +550,7 @@ struct dev_extent {
     uuid chunk_tree_uuid;
 } __attribute__ ((__packed__));
 
-struct remap {
+struct remap_item {
     le64 address;
 } __attribute__ ((__packed__));
 
@@ -2906,7 +2906,7 @@ struct std::formatter<btrfs::raid_stride> {
 };
 
 template<>
-struct std::formatter<btrfs::remap> {
+struct std::formatter<btrfs::remap_item> {
     constexpr auto parse(format_parse_context& ctx) {
         auto it = ctx.begin();
 
@@ -2917,7 +2917,7 @@ struct std::formatter<btrfs::remap> {
     }
 
     template<typename format_context>
-    auto format(const btrfs::remap& r, format_context& ctx) const {
+    auto format(const btrfs::remap_item& r, format_context& ctx) const {
         return format_to(ctx.out(), "{:x}", r.address);
     }
 };
