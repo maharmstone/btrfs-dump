@@ -171,7 +171,7 @@ constexpr uint64_t BLOCK_GROUP_RAID6 = 1 << 8;
 constexpr uint64_t BLOCK_GROUP_RAID1C3 = 1 << 9;
 constexpr uint64_t BLOCK_GROUP_RAID1C4 = 1 << 10;
 constexpr uint64_t BLOCK_GROUP_REMAPPED = 1 << 11;
-constexpr uint64_t BLOCK_GROUP_REMAP = 1 << 12;
+constexpr uint64_t BLOCK_GROUP_METADATA_REMAP = 1 << 12;
 constexpr uint64_t BLOCK_GROUP_STRIPE_REMOVAL_PENDING = 1 << 13;
 
 constexpr uint64_t FIRST_CHUNK_TREE_OBJECTID = 0x100;
@@ -1163,12 +1163,12 @@ string block_group_item_flags(uint64_t f) {
         f &= ~btrfs::BLOCK_GROUP_RAID1C4;
     }
 
-    if (f & btrfs::BLOCK_GROUP_REMAP) {
+    if (f & btrfs::BLOCK_GROUP_METADATA_REMAP) {
         if (!ret.empty())
             ret += ",";
 
-        ret += "remap";
-        f &= ~btrfs::BLOCK_GROUP_REMAP;
+        ret += "metadata_remap";
+        f &= ~btrfs::BLOCK_GROUP_METADATA_REMAP;
     }
 
     if (f & btrfs::BLOCK_GROUP_REMAPPED) {
