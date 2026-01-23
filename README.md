@@ -17,8 +17,8 @@ diff-able, so you can do for instance:
 and get:
 
 ```diff
---- bef.txt     2025-09-18 18:34:18.336661321 +0100
-+++ aft.txt     2025-09-18 18:34:31.176590220 +0100
+--- before.txt  2025-09-18 18:34:18.336661321 +0100
++++ after.txt   2025-09-18 18:34:31.176590220 +0100
 @@ -1,4 +1,4 @@
 -header csum=8cffdf1f fsid=11ca5960-0c9f-4536-9de0-765251e106b2 bytenr=1d00000 flags=written,mixed_backref chunk_tree_uuid=68b52de7-e2bd-4fcf-bf3d-5c9f6a0995eb generation=b owner=5 nritems=6 level=0 physical=test,2500000;test,5830000
 +header csum=27acbb5d fsid=11ca5960-0c9f-4536-9de0-765251e106b2 bytenr=1d04000 flags=written,mixed_backref chunk_tree_uuid=68b52de7-e2bd-4fcf-bf3d-5c9f6a0995eb generation=c owner=5 nritems=6 level=0 physical=test,2504000;test,5834000
