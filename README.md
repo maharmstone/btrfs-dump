@@ -62,6 +62,10 @@ Options:
 hexadecimal (with a leading "0x"), or the same strings that `btrfs-progs`
 supports (e.g. `-t fs` as a synonym for `-t 5`)
 
+* `-p|--physical`: also print the physical addresses of a block in the tree
+header. This can be useful for feeding to `dd`, or if you have the image open
+in a hex editor.
+
 If you only give one device for a multi-device filesystem, it will use
 `libblkid` to try and find the other devices - or you can always specify them
 manually.
@@ -78,3 +82,12 @@ $ cd build
 $ cmake -GNinja ..
 $ ninja
 ```
+
+Changelog
+---------
+
+* 20260123:
+    * Added `--physical` option
+    * Added definitions for experimental incompat feature REMAP_TREE
+
+* 20250918: Initial release

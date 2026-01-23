@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(btrfs-dump VERSION 20250918)
+project(btrfs-dump VERSION 20260123)
 
 include(GNUInstallDirs)
 
