@@ -1235,6 +1235,7 @@ static uint64_t parse_tree_id(string_view sv) {
         { "block-group", btrfs::BLOCK_GROUP_TREE_OBJECTID },
         { "raid_stripe", btrfs::RAID_STRIPE_TREE_OBJECTID },
         { "raid-stripe", btrfs::RAID_STRIPE_TREE_OBJECTID },
+        { "remap", btrfs::REMAP_TREE_OBJECTID },
     };
 
     for (const auto& t : trees) {
