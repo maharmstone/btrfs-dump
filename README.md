@@ -2,7 +2,7 @@ btrfs-dump
 ==========
 
 `btrfs-dump` is a metadata dumper for btrfs, which produces compact text output.
-The chief advantage over `btrfs inspect-internal dump-tree` is that is easily
+The chief advantage over `btrfs inspect-internal dump-tree` is that it's easily
 diff-able, so you can do for instance:
 
 ```shell
