@@ -873,7 +873,9 @@ static void dump_tree(const fs_info& info, uint64_t addr, string_view pref,
         auto pref2 = string{pref} + " "; // FIXME
 
         for (const auto& it : items) {
-            cout << format("{}{}\n", pref, it);
+            if (print)
+                cout << format("{}{}\n", pref, it);
+
             dump_tree(info, it.blockptr, pref2, print, print_physical, func);
         }
     }
