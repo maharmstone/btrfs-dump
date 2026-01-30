@@ -1045,9 +1045,11 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
     if (!tree_id.has_value())
         cout << "CHUNK:" << endl;
 
+    decltype(info.chunks) new_chunks;
+
     dump_tree(info, sb.chunk_root, "",
               !tree_id.has_value() || *tree_id == btrfs::CHUNK_TREE_OBJECTID,
-              print_physical, [&info](const btrfs::key& key, span<const uint8_t> item) {
+              print_physical, [&new_chunks](const btrfs::key& key, span<const uint8_t> item) {
         if (key.type != btrfs::key_type::CHUNK_ITEM)
             return;
 
@@ -1061,8 +1063,10 @@ static void dump(const vector<filesystem::path>& fns, optional<uint64_t> tree_id
                                   c.num_stripes, MAX_STRIPES);
         }
 
-        info.chunks.insert(make_pair((uint64_t)key.offset, c));
+        new_chunks.insert(make_pair((uint64_t)key.offset, c));
     });
+
+    info.chunks.swap(new_chunks);
 
     if (!tree_id.has_value())
         cout << endl;
