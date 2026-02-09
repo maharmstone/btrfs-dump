@@ -49,6 +49,8 @@ module;
 
 export module b64;
 
+using namespace std;
+
 static const unsigned char base64_table[65] =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -60,7 +62,7 @@ static const unsigned char base64_table[65] =
 * Returns: Allocated buffer of out_len bytes of encoded data,
 * or empty string on failure
 */
-export std::string b64encode(std::span<const uint8_t> s) {
+export string b64encode(span<const uint8_t> s) {
 	const unsigned char* src = (const unsigned char*)s.data();
 	size_t len = s.size();
 	unsigned char *out, *pos;
@@ -71,9 +73,9 @@ export std::string b64encode(std::span<const uint8_t> s) {
 	olen = 4*((len + 2) / 3); /* 3-byte blocks to 4-byte */
 
 	if (olen < len)
-		return std::string(); /* integer overflow */
+		return string(); /* integer overflow */
 
-	std::string outStr;
+	string outStr;
 	outStr.resize(olen);
 	out = (unsigned char*)&outStr[0];
 
@@ -116,11 +118,11 @@ static const int B64index[256] = {
 	41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51
 };
 
-export std::string b64decode(std::string_view sv) {
+export string b64decode(string_view sv) {
 	auto p = (unsigned char*)sv.data();
 	int pad = sv.length() > 0 && (sv.length() % 4 || p[sv.length() - 1] == '=');
 	const size_t L = ((sv.length() + 3) / 4 - pad) * 4;
-	std::string str(L / 4 * 3 + pad, '\0');
+	string str(L / 4 * 3 + pad, '\0');
 
 	for (size_t i = 0, j = 0; i < L; i += 4) {
 		int n = B64index[p[i]] << 18 | B64index[p[i + 1]] << 12 | B64index[p[i + 2]] << 6 | B64index[p[i + 3]];
