@@ -86,6 +86,10 @@ $ ninja
 Changelog
 ---------
 
+* 20260216:
+    * Fixed failure when chunk tree had multiple leaves
+    * Fixed spurious key_ptr headers getting printed
+
 * 20260123:
     * Added `--physical` option
     * Added definitions for experimental incompat feature REMAP_TREE
