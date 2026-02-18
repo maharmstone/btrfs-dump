@@ -1321,5 +1321,8 @@ Options:
         dump(fns, tree_id, print_physical);
     } catch (const exception& e) {
         cerr << "Exception: " << e.what() << endl;
+        return 1;
     }
+
+    return 0;
 }
