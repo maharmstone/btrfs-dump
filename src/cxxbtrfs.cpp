@@ -1412,7 +1412,13 @@ string incompat_flags(uint64_t f) {
         f &= ~btrfs::FEATURE_INCOMPAT_SIMPLE_QUOTA;
     }
 
-    // FIXME - remap tree
+    if (f & btrfs::FEATURE_INCOMPAT_REMAP_TREE) {
+        if (!ret.empty())
+            ret += ",";
+
+        ret += "remap_tree";
+        f &= ~btrfs::FEATURE_INCOMPAT_REMAP_TREE;
+    }
 
     if (ret.empty())
         ret += format("{:x}", f);
