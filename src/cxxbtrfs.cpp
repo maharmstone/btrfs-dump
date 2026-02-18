@@ -2436,11 +2436,6 @@ struct std::formatter<btrfs::dir_log_item> {
     }
 };
 
-constexpr uint64_t QGROUP_STATUS_FLAG_ON = 1 << 0;
-constexpr uint64_t QGROUP_STATUS_FLAG_RESCAN = 1 << 1;
-constexpr uint64_t QGROUP_STATUS_FLAG_INCONSISTENT = 1 << 2;
-constexpr uint64_t QGROUP_STATUS_FLAG_SIMPLE_MODE = 1 << 3;
-
 string qgroup_status_flags(uint64_t f) {
     string ret;
 
