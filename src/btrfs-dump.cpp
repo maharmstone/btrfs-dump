@@ -376,8 +376,13 @@ static void dump_item(span<const uint8_t> s, string_view pref,
                 cout << format("extent_data {}", fei);
 
                 if (fei.type == btrfs::file_extent_item_type::inline_extent) {
-                    s = s.subspan(offsetof(btrfs::file_extent_item, disk_bytenr));
-                    s = s.subspan(fei.ram_bytes);
+                    if (fei.compression != btrfs::compression_type::none) {
+                        // if compressed inline extent, don't bother checking for over- or underrun
+                        s = s.subspan(s.size());
+                    } else {
+                        s = s.subspan(offsetof(btrfs::file_extent_item, disk_bytenr));
+                        s = s.subspan(fei.ram_bytes);
+                    }
                 } else
                     s = s.subspan(sizeof(btrfs::file_extent_item));
 
