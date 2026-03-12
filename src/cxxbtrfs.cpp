@@ -10,6 +10,7 @@ export module cxxbtrfs;
 import crc32c;
 import xxhash;
 import sha256;
+import blake2b;
 
 using namespace std;
 
@@ -765,8 +766,6 @@ enum raid_type get_chunk_raid_type(const chunk& c) {
 }
 
 bool check_superblock_csum(const super_block& sb) {
-    // FIXME - blake2
-
     auto sp = span((uint8_t*)&sb.fsid, sizeof(super_block) - sizeof(sb.csum));
 
     switch (sb.csum_type) {
@@ -788,14 +787,18 @@ bool check_superblock_csum(const super_block& sb) {
             return sb.csum == hash;
         }
 
+        case csum_type::BLAKE2: {
+            auto hash = calc_blake2b_256(sp);
+
+            return sb.csum == hash;
+        }
+
         default:
             return false;
     }
 }
 
 bool check_tree_csum(const header& h, const super_block& sb) {
-    // FIXME - blake2
-
     auto sp = span((uint8_t*)&h.fsid, sb.nodesize - sizeof(h.csum));
 
     switch (sb.csum_type) {
@@ -813,6 +816,12 @@ bool check_tree_csum(const header& h, const super_block& sb) {
 
         case csum_type::SHA256: {
             auto hash = calc_sha256(sp);
+
+            return h.csum == hash;
+        }
+
+        case csum_type::BLAKE2: {
+            auto hash = calc_blake2b_256(sp);
 
             return h.csum == hash;
         }
