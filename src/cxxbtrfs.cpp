@@ -8,6 +8,7 @@ module;
 export module cxxbtrfs;
 
 import crc32c;
+import xxhash;
 
 using namespace std;
 
@@ -763,26 +764,49 @@ enum raid_type get_chunk_raid_type(const chunk& c) {
 }
 
 bool check_superblock_csum(const super_block& sb) {
-    // FIXME - xxhash, sha256, blake2
+    // FIXME - sha256, blake2
 
-    if (sb.csum_type != csum_type::CRC32)
-        return false;
+    auto sp = span((uint8_t*)&sb.fsid, sizeof(super_block) - sizeof(sb.csum));
 
-    auto crc32 = ~calc_crc32c(0xffffffff,
-                              span((uint8_t*)&sb.fsid, sizeof(super_block) - sizeof(sb.csum)));
+    switch (sb.csum_type) {
+        case csum_type::CRC32: {
+            auto hash = ~calc_crc32c(0xffffffff, sp);
 
-    return *(le32*)sb.csum.data() == crc32;
+            return *(le32*)sb.csum.data() == hash;
+        }
+
+        case csum_type::XXHASH: {
+            auto hash = calc_xxhash64(0, sp);
+
+            return *(le64*)sb.csum.data() == hash;
+        }
+
+        default:
+            return false;
+    }
 }
 
 bool check_tree_csum(const header& h, const super_block& sb) {
-    // FIXME - xxhash, sha256, blake2
+    // FIXME - sha256, blake2
 
-    if (sb.csum_type != csum_type::CRC32)
-        return false;
+    auto sp = span((uint8_t*)&h.fsid, sb.nodesize - sizeof(h.csum));
 
-    auto crc32 = ~calc_crc32c(0xffffffff, span((uint8_t*)&h.fsid, sb.nodesize - sizeof(h.csum)));
+    switch (sb.csum_type) {
+        case csum_type::CRC32: {
+            auto hash = ~calc_crc32c(0xffffffff, sp);
 
-    return *(le32*)h.csum.data() == crc32;
+            return *(le32*)h.csum.data() == hash;
+        }
+
+        case csum_type::XXHASH: {
+            auto hash = calc_xxhash64(0, sp);
+
+            return *(le64*)h.csum.data() == hash;
+        }
+
+        default:
+            return false;
+    }
 }
 
 }
