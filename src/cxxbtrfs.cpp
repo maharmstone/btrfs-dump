@@ -9,6 +9,7 @@ export module cxxbtrfs;
 
 import crc32c;
 import xxhash;
+import sha256;
 
 using namespace std;
 
@@ -764,7 +765,7 @@ enum raid_type get_chunk_raid_type(const chunk& c) {
 }
 
 bool check_superblock_csum(const super_block& sb) {
-    // FIXME - sha256, blake2
+    // FIXME - blake2
 
     auto sp = span((uint8_t*)&sb.fsid, sizeof(super_block) - sizeof(sb.csum));
 
@@ -781,13 +782,19 @@ bool check_superblock_csum(const super_block& sb) {
             return *(le64*)sb.csum.data() == hash;
         }
 
+        case csum_type::SHA256: {
+            auto hash = calc_sha256(sp);
+
+            return sb.csum == hash;
+        }
+
         default:
             return false;
     }
 }
 
 bool check_tree_csum(const header& h, const super_block& sb) {
-    // FIXME - sha256, blake2
+    // FIXME - blake2
 
     auto sp = span((uint8_t*)&h.fsid, sb.nodesize - sizeof(h.csum));
 
@@ -802,6 +809,12 @@ bool check_tree_csum(const header& h, const super_block& sb) {
             auto hash = calc_xxhash64(0, sp);
 
             return *(le64*)h.csum.data() == hash;
+        }
+
+        case csum_type::SHA256: {
+            auto hash = calc_sha256(sp);
+
+            return h.csum == hash;
         }
 
         default:
