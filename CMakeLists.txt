@@ -18,7 +18,8 @@ pkg_check_modules(BLKID REQUIRED IMPORTED_TARGET blkid)
 target_sources(btrfs-dump PUBLIC FILE_SET CXX_MODULES FILES
     src/cxxbtrfs.cpp
     src/formatted_error.cpp
-    src/b64.cpp)
+    src/b64.cpp
+    src/crc32c.cpp)
 
 target_compile_options(btrfs-dump PUBLIC -Wall -Wextra -Wno-unqualified-std-cast-call -Wno-missing-field-initializers)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
