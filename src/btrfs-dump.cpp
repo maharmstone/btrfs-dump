@@ -744,8 +744,12 @@ static void dump_item(span<const uint8_t> s, string_view pref,
         }
     }
 
-    if (!unrecog && !s.empty())
-        cout << format(" (left={:x})", s.size());
+    if (!unrecog && !s.empty()) {
+        cout << " extra=";
+        for (auto b : s) {
+            cout << format("{:02x}", b);
+        }
+    }
 
     cout << endl;
 }
