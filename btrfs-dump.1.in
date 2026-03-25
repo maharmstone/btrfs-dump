@@ -1,0 +1,118 @@
+.TH BTRFS\-DUMP 1 "March 2026" "btrfs-dump @PROJECT_VERSION@" "User Commands"
+.SH NAME
+btrfs\-dump \- dump btrfs filesystem metadata in text format
+.SH SYNOPSIS
+.B btrfs\-dump
+.RB [ \-t | \-\-tree
+.IR tree_id ]
+.RB [ \-p | \-\-physical ]
+.IR device " [" device "...]"
+.SH DESCRIPTION
+.B btrfs\-dump
+reads a btrfs filesystem image or device and outputs a text representation
+of its metadata trees.
+.PP
+Only metadata is dumped; file data (both inline and non-inline extents)
+is not included in the output.
+.PP
+If a single device is specified for a multi-device filesystem,
+.B btrfs\-dump
+will attempt to locate the remaining devices automatically using
+.BR blkid (8).
+.SH OPTIONS
+.TP
+.BR \-t ", " \-\-tree " " \fItree_id\fR
+Print only the specified tree. The
+.I tree_id
+may be a decimal number, a hexadecimal number prefixed with
+.BR 0x ,
+or a name such as
+.BR root ,
+.BR extent ,
+.BR chunk ,
+.BR fs ,
+.BR csum ,
+.BR uuid ,
+.BR free\-space ,
+.BR tree\-log ,
+.BR remap ,
+etc. Names are case-insensitive, and optional
+.B btrfs_
+prefixes and
+.B _tree
+or
+.B _objectid
+suffixes are stripped automatically. The logic here matches that of
+.BR "btrfs inspect-internal dump-tree" .
+.TP
+.BR \-p ", " \-\-physical
+Include physical device addresses in tree node headers.
+.TP
+.B \-\-version
+Print the version string and exit.
+.TP
+.B \-\-help
+Print usage information and exit.
+.SH OUTPUT FORMAT
+The output is a line-oriented text format. Trees are separated by label
+lines ending with a colon (e.g.\&
+.BR CHUNK: ,
+.BR ROOT: ,
+.BR LOG: ,
+.BR "Tree 100:" ).
+.PP
+Trees are dumped in the following order: superblock, bootstrap
+(sys_chunk_array), backup roots, chunk tree, remap tree (if present),
+root tree, log tree (if present), all other trees, per-subvolume log
+trees.
+.SS Superblock
+.nf
+superblock \fIfield\fR=\fIvalue\fR ... (dev_item \fIfield\fR=\fIvalue\fR ...) \fIfield\fR=\fIvalue\fR ...
+.fi
+.SS Bootstrap entries
+.nf
+bootstrap \fIobjectid\fR,type,\fIoffset\fR
+chunk_item \fIfield\fR=\fIvalue\fR ...
+.fi
+.SS Backup roots
+.nf
+backup \fIfield\fR=\fIvalue\fR ...
+.fi
+.SS Tree nodes
+Each tree node begins with a header line, followed by its items:
+.PP
+.nf
+header bytenr=\fIX\fR flags=\fIX\fR generation=\fIX\fR owner=\fIX\fR level=\fIX\fR ...
+.fi
+.PP
+The indentation of a tree is determined by its level.
+.PP
+Internal node keys include block pointers:
+.PP
+.nf
+\fIobjectid\fR,\fItype\fR,\fIoffset\fR blockptr=\fIX\fR generation=\fIX\fR
+.fi
+.PP
+Leaf items consist of a key line followed by an item data line:
+.PP
+.nf
+\fIobjectid\fR,\fItype\fR,\fIoffset\fR
+\fIitem_type\fR \fIfield\fR=\fIvalue\fR ...
+.fi
+.PP
+All numbers apart from datetimes and file modes are given in hexadecimal. This
+is contrary to the behaviour both of \fBbtrfs-progs\fR and the kernel, both of
+which near-universally use decimal.
+.SS Trailing data
+If a recognised item type has trailing bytes beyond the known structure,
+they are appended as
+.BR " extra=" \fIhex\fR.
+Unknown item types are output as
+.BI "unknown (size=" X ") extra=" hex\fR.
+.SH SEE ALSO
+.BR btrfs (8),
+.BR btrfs\-check (8)
+.SH AUTHOR
+Written by Mark Harmstone (\fBmark@harmstone.com\fR).
+.SH WEB
+https://github.com/maharmstone/btrfs-dump

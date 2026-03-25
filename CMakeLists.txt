@@ -8,6 +8,7 @@ project(btrfs-dump VERSION 20260216)
 include(GNUInstallDirs)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/btrfs-dump.1.in ${CMAKE_CURRENT_BINARY_DIR}/btrfs-dump.1)
 
 find_package(PkgConfig REQUIRED)
 
@@ -32,3 +33,5 @@ target_link_libraries(btrfs-dump PkgConfig::BLKID)
 install(TARGETS btrfs-dump DESTINATION ${CMAKE_INSTALL_BINDIR}
     CXX_MODULES_BMI EXCLUDE_FROM_ALL
 )
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/btrfs-dump.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
