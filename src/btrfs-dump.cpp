@@ -222,8 +222,6 @@ static string free_space_bitmap(span<const uint8_t> s, uint64_t offset,
 
 static void dump_item(span<const uint8_t> s, string_view pref,
                       const btrfs::key& key, const btrfs::super_block& sb) {
-    bool unrecog = false;
-
     // FIXME - handle short items
 
     cout << pref;
@@ -740,11 +738,10 @@ static void dump_item(span<const uint8_t> s, string_view pref,
                 cerr << format("ERROR - unknown type {} (size {:x})", key.type, s.size()) << endl;
 
                 cout << format("unknown (size={:x})", s.size());
-                unrecog = true;
         }
     }
 
-    if (!unrecog && !s.empty()) {
+    if (!s.empty()) {
         cout << " extra=";
         for (auto b : s) {
             cout << format("{:02x}", b);
