@@ -1901,6 +1901,28 @@ struct std::formatter<btrfs::root_item> {
     }
 };
 
+string escape_name(string_view sv) {
+    string result;
+    result.reserve(sv.size());
+
+    for (auto c : sv) {
+        if (c == '\\')
+            result += "\\\\";
+        else if (c == ' ')
+            result += "\\ ";
+        else if (c == '\r')
+            result += "\\r";
+        else if (c == '\n')
+            result += "\\n";
+        else if ((unsigned char)c < 0x20 || c == 0x7f)
+            result += format("\\x{:02x}", (unsigned char)c);
+        else
+            result += c;
+    }
+
+    return result;
+}
+
 template<>
 struct std::formatter<btrfs::inode_ref> {
     constexpr auto parse(format_parse_context& ctx) {
@@ -1916,7 +1938,7 @@ struct std::formatter<btrfs::inode_ref> {
     auto format(const btrfs::inode_ref& ir, format_context& ctx) const {
         return format_to(ctx.out(), "index={:x} name_len={:x} name={}",
                          ir.index, ir.name_len,
-                         string_view((char*)&ir + sizeof(btrfs::inode_ref), ir.name_len));
+                         escape_name(string_view((char*)&ir + sizeof(btrfs::inode_ref), ir.name_len)));
     }
 };
 
@@ -1935,7 +1957,7 @@ struct std::formatter<btrfs::inode_extref> {
     auto format(const btrfs::inode_extref& ier, format_context& ctx) const {
         return format_to(ctx.out(), "parent_objectid={:x} index={:x} name_len={:x} name={}",
                          ier.parent_objectid, ier.index, ier.name_len,
-                         string_view(ier.name, ier.name_len));
+                         escape_name(string_view(ier.name, ier.name_len)));
     }
 };
 
@@ -1994,10 +2016,10 @@ struct std::formatter<btrfs::dir_item> {
     auto format(const btrfs::dir_item& di, format_context& ctx) const {
         auto ret = format_to(ctx.out(), "location={:x} transid={:x} data_len={:x} name_len={:x} type={} name={}",
                              di.location, di.transid, di.data_len, di.name_len, di.type,
-                             string_view((char*)&di + sizeof(btrfs::dir_item), di.name_len));
+                             escape_name(string_view((char*)&di + sizeof(btrfs::dir_item), di.name_len)));
 
         if (di.data_len != 0)
-            ret = format_to(ret, " data={}", string_view((char*)&di + sizeof(btrfs::dir_item) + di.name_len, di.data_len));
+            ret = format_to(ret, " data={}", escape_name(string_view((char*)&di + sizeof(btrfs::dir_item) + di.name_len, di.data_len)));
 
         return ret;
     }
@@ -2314,7 +2336,7 @@ struct std::formatter<btrfs::root_ref> {
     auto format(const btrfs::root_ref& rr, format_context& ctx) const {
         return format_to(ctx.out(), "dirid={:x} sequence={:x} name_len={:x} name={}",
                          rr.dirid, rr.sequence, rr.name_len,
-                         string_view((char*)&rr + sizeof(btrfs::root_ref), rr.name_len));
+                         escape_name(string_view((char*)&rr + sizeof(btrfs::root_ref), rr.name_len)));
     }
 };
 
