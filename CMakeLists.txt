@@ -24,7 +24,7 @@ target_sources(btrfs-dump PUBLIC FILE_SET CXX_MODULES FILES
     src/sha256.cpp
     src/blake2b.cpp)
 
-target_compile_options(btrfs-dump PUBLIC -Wall -Wextra -Wno-unqualified-std-cast-call -Wno-missing-field-initializers)
+target_compile_options(btrfs-dump PUBLIC -Wall -Wextra -Wno-unqualified-std-cast-call -Wno-missing-field-initializers -fno-strict-aliasing)
 target_include_directories(btrfs-dump PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(btrfs-dump PkgConfig::BLKID)
