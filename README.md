@@ -51,6 +51,10 @@ form.
 The supported output should be completely comprehensive: if you find something
 valid that `btrfs-dump` fails to understand, please open an issue.
 
+`btrfs-assemble` does the reverse: given the output of `btrfs-dump`, it constructs
+a btrfs image. The main purpose of this is to construct deliberately invalid
+images for testing.
+
 Usage
 -----
 
@@ -70,6 +74,10 @@ If you only give one device for a multi-device filesystem, it will use
 `libblkid` to try and find the other devices - or you can always specify them
 manually.
 
+`btrfs-assemble <input.txt> <output.img>`
+
+Read the text file `input.txt`, and output a btrfs image `output.img`.
+
 Compilation
 -----------
 
@@ -85,6 +93,14 @@ $ ninja
 
 Changelog
 ---------
+
+* 20260330:
+    * Added `remap_tree` to incompat flags
+    * Fixed issue when dumping compressed inline extent
+    * Extra bytes on an item now get written out explicitly
+    * Spaces and special characters in file names now get escaped
+    * Added man page
+    * Added `btrfs-assemble`
 
 * 20260216:
     * Fixed failure when chunk tree had multiple leaves
