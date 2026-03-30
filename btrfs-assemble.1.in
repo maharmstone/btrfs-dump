@@ -1,0 +1,96 @@
+.TH BTRFS\-ASSEMBLE 1 "March 2026" "btrfs-dump @PROJECT_VERSION@" "User Commands"
+.SH NAME
+btrfs\-assemble \- reassemble a btrfs filesystem image from text
+.SH SYNOPSIS
+.B btrfs\-assemble
+.I input.txt
+.I output.img
+.SH DESCRIPTION
+.B btrfs\-assemble
+reads a text representation of btrfs metadata (as produced by
+.BR btrfs\-dump (1))
+and creates a binary filesystem image.
+.PP
+Node checksums are computed automatically. The chunk map is built
+incrementally from bootstrap entries and CHUNK_ITEM items to resolve
+logical addresses to physical offsets.
+.PP
+The resulting image contains only metadata, file data extents are not
+populated. Inline extent data is zero-filled.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print usage information and exit.
+.SH INPUT FORMAT
+The input is the line-oriented text format produced by
+.BR btrfs\-dump (1).
+The parser is single-pass and processes the following line types:
+.SS Labels
+Lines ending with a colon (e.g.\&
+.BR CHUNK: ,
+.BR ROOT: ,
+.BR "Tree 100 (log):" )
+are treated as tree labels and skipped.
+.SS Superblock
+.nf
+superblock \fIfield\fR=\fIvalue\fR ... (dev_item \fIfield\fR=\fIvalue\fR ...) \fIfield\fR=\fIvalue\fR ...
+.fi
+.SS Bootstrap entries
+.nf
+bootstrap \fIobjectid\fR,CHUNK_ITEM,\fIoffset\fR
+chunk_item \fIfield\fR=\fIvalue\fR ...
+.fi
+.SS Backup roots
+.nf
+backup \fIfield\fR=\fIvalue\fR ...
+.fi
+.SS Tree nodes
+.nf
+header bytenr=\fIX\fR flags=\fIX\fR generation=\fIX\fR owner=\fIX\fR level=\fIX\fR ...
+\fIobjectid\fR,\fItype\fR,\fIoffset\fR
+\fIitem_type\fR \fIfield\fR=\fIvalue\fR ...
+.fi
+.PP
+For internal nodes (level > 0), key lines include
+.B blockptr
+and
+.B generation
+fields.
+.SS Escaping
+Names and data values use backslash escaping:
+.B \e\e
+for backslash,
+.B \e\0
+for space,
+.B \er
+for carriage return,
+.B \en
+for newline, and
+.B \exXX
+for other non-printable characters.
+.SS Trailing data
+The
+.BI "extra=" hex
+suffix on any item line appends raw bytes after the parsed item data.
+This is used to preserve unknown item types and trailing data in
+recognized items.
+.SS Raw items
+The
+.BI "raw " hex
+item type allows specifying item data as raw hexadecimal bytes,
+bypassing all item-type-specific parsing.
+.SH EXAMPLES
+Dump a filesystem and reassemble it:
+.PP
+.nf
+btrfs\-dump /dev/sda1 > fs.txt
+btrfs\-assemble fs.txt fs.img
+.fi
+.SH SEE ALSO
+.BR btrfs\-dump (1),
+.BR btrfs (8),
+.BR btrfs\-check (8)
+.SH AUTHOR
+Written by Mark Harmstone (\fBmark@harmstone.com\fR).
+.SH WEB
+https://github.com/maharmstone/btrfs-dump

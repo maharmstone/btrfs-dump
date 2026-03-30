@@ -9,6 +9,7 @@ include(GNUInstallDirs)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/btrfs-dump.1.in ${CMAKE_CURRENT_BINARY_DIR}/btrfs-dump.1)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/btrfs-assemble.1.in ${CMAKE_CURRENT_BINARY_DIR}/btrfs-assemble.1)
 
 find_package(PkgConfig REQUIRED)
 
@@ -53,3 +54,4 @@ install(TARGETS btrfs-assemble DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/btrfs-dump.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/btrfs-assemble.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)

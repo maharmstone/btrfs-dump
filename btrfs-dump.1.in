@@ -110,6 +110,7 @@ they are appended as
 Unknown item types are output as
 .BI "unknown (size=" X ") extra=" hex\fR.
 .SH SEE ALSO
+.BR btrfs\-assemble (1),
 .BR btrfs (8),
 .BR btrfs\-check (8)
 .SH AUTHOR
