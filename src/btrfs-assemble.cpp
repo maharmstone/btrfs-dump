@@ -1538,7 +1538,7 @@ static vector<uint8_t> parse_item_data(string_view type_line, const btrfs::key& 
                     else if (fname == "objectid")
                         edr.objectid = parse_hex<uint64_t>(fval);
                     else if (fname == "offset")
-                        edr.offset = parse_hex<uint64_t>(fval);
+                        edr.offset = (uint64_t)parse_hex<int64_t>(fval);
                     else if (fname == "count") {
                         edr.count = parse_hex<uint32_t>(fval);
                         break;
@@ -2195,7 +2195,7 @@ static vector<uint8_t> parse_item_data(string_view type_line, const btrfs::key& 
             else if (fname == "objectid")
                 edr.objectid = parse_hex<uint64_t>(fval);
             else if (fname == "offset")
-                edr.offset = parse_hex<uint64_t>(fval);
+                edr.offset = (uint64_t)parse_hex<int64_t>(fval);
             else if (fname == "count")
                 edr.count = parse_hex<uint32_t>(fval);
             else
