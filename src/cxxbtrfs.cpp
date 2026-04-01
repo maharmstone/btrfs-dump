@@ -2196,8 +2196,17 @@ struct std::formatter<btrfs::extent_data_ref> {
 
     template<typename format_context>
     auto format(const btrfs::extent_data_ref& edr, format_context& ctx) const {
-        return format_to(ctx.out(), "root={:x} objectid={:x} offset={:x} count={:x}",
-                         edr.root, edr.objectid, edr.offset, edr.count);
+        auto ret = format_to(ctx.out(), "root={:x} objectid={:x} offset=",
+                             edr.root, edr.objectid);
+
+        if ((int64_t)edr.offset < 0)
+            ret = format_to(ret, "-{:x}", -(int64_t)edr.offset);
+        else
+            ret = format_to(ret, "{:x}", edr.offset);
+
+        ret = format_to(ret, " count={:x}", edr.count);
+
+        return ret;
     }
 };
 
