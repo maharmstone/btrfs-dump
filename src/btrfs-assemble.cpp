@@ -46,7 +46,7 @@ static vector<uint8_t> parse_hex_bytes(string_view sv) {
     return ret;
 }
 
-template<typename T>
+template<integral T>
 static T parse_hex(string_view sv) {
     T val;
 
