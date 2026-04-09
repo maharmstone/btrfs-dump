@@ -1,4 +1,4 @@
-.TH BTRFS\-ASSEMBLE 1 "March 2026" "btrfs-dump @PROJECT_VERSION@" "User Commands"
+.TH BTRFS\-ASSEMBLE 1 "April 2026" "btrfs-dump @PROJECT_VERSION@" "User Commands"
 .SH NAME
 btrfs\-assemble \- reassemble a btrfs filesystem image from text
 .SH SYNOPSIS

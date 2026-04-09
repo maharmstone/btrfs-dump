@@ -94,6 +94,10 @@ $ ninja
 Changelog
 ---------
 
+* 20260409:
+    * offset in extent_data_ref now correctly treated as signed
+    * Fixed `btrfs-assemble` not working correctly with deep trees
+
 * 20260330:
     * Added `remap_tree` to incompat flags
     * Fixed issue when dumping compressed inline extent
