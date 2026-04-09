@@ -960,6 +960,7 @@ struct node_state {
     btrfs::uuid chunk_tree_uuid;
     bool has_fsid = false;
     bool has_chunk_tree_uuid = false;
+    unsigned int indent = 0;
     vector<btrfs::key_ptr> key_ptrs;
     vector<leaf_item> items;
 };
@@ -2497,7 +2498,7 @@ static void assemble(string_view input_path, string_view output_path) {
     sb.bytenr = btrfs::superblock_addrs[0];
 
     bool have_superblock = false;
-    optional<node_state> current_node;
+    vector<node_state> node_stack;
     optional<btrfs::key> current_key;
     uint32_t sys_chunk_offset = 0;
     unsigned int backup_index = 0;
@@ -2507,13 +2508,9 @@ static void assemble(string_view input_path, string_view output_path) {
 
     memset(&bootstrap_key, 0, sizeof(bootstrap_key));
 
-    auto flush_node = [&]() {
-        if (!current_node.has_value())
-            return;
-
-        // before writing, collect any chunk_items from this node to update the chunk map
-        if (current_node->level == 0) {
-            for (const auto& it : current_node->items) {
+    auto write_and_collect_chunks = [&](node_state& node) {
+        if (node.level == 0) {
+            for (const auto& it : node.items) {
                 if (it.key.type == btrfs::key_type::CHUNK_ITEM && it.data.size() >= offsetof(btrfs::chunk, stripe)) {
                     auto& c = *(const btrfs::chunk*)it.data.data();
 
@@ -2532,10 +2529,26 @@ static void assemble(string_view input_path, string_view output_path) {
             }
         }
 
-        write_node(out, *current_node, sb, chunks);
+        write_node(out, node, sb, chunks);
+    };
 
-        current_node.reset();
+    auto flush_to_indent = [&](unsigned int indent) {
+        if (!node_stack.empty() && node_stack.back().indent >= indent)
+            current_key.reset();
+
+        while (!node_stack.empty() && node_stack.back().indent >= indent) {
+            write_and_collect_chunks(node_stack.back());
+            node_stack.pop_back();
+        }
+    };
+
+    auto flush_all = [&]() {
         current_key.reset();
+
+        while (!node_stack.empty()) {
+            write_and_collect_chunks(node_stack.back());
+            node_stack.pop_back();
+        }
     };
 
     while (getline(in, line)) {
@@ -2543,9 +2556,11 @@ static void assemble(string_view input_path, string_view output_path) {
             line.pop_back();
 
         auto stripped = string_view(line);
+        unsigned int indent = 0;
 
         while (!stripped.empty() && stripped.front() == ' ') {
             stripped.remove_prefix(1);
+            indent++;
         }
 
         if (stripped.empty())
@@ -2566,7 +2581,7 @@ static void assemble(string_view input_path, string_view output_path) {
         }
 
         if (type == "superblock") {
-            flush_node();
+            flush_all();
 
             // the superblock line includes "(dev_item ...)" - we need to extract that
             static constexpr string_view dev_item_prefix = "(dev_item ";
@@ -2596,7 +2611,7 @@ static void assemble(string_view input_path, string_view output_path) {
 
             *(btrfs::key*)(sb.sys_chunk_array.data() + sys_chunk_offset) = bootstrap_key;
             sys_chunk_offset += sizeof(btrfs::key);
-        } else if (type == "chunk_item" && !current_node) {
+        } else if (type == "chunk_item" && node_stack.empty()) {
             struct {
                 btrfs::chunk c;
                 btrfs::stripe extra_stripes[15];
@@ -2745,9 +2760,11 @@ static void assemble(string_view input_path, string_view output_path) {
                 backup_index++;
             }
         } else if (type == "header") {
-            flush_node();
+            flush_to_indent(indent);
 
-            current_node.emplace();
+            node_stack.emplace_back();
+            auto& current_node = node_stack.back();
+            current_node.indent = indent;
 
             while (!rest.empty()) {
                 auto [fname, fval] = next_field(rest);
@@ -2757,29 +2774,34 @@ static void assemble(string_view input_path, string_view output_path) {
                 if (fname == "csum") {
                     // ignored, computed automatically
                 } else if (fname == "fsid") {
-                    current_node->fsid = parse_uuid(fval);
-                    current_node->has_fsid = true;
+                    current_node.fsid = parse_uuid(fval);
+                    current_node.has_fsid = true;
                 } else if (fname == "bytenr")
-                    current_node->bytenr = parse_hex<uint64_t>(fval);
+                    current_node.bytenr = parse_hex<uint64_t>(fval);
                 else if (fname == "flags")
-                    current_node->flags = parse_header_flags(fval);
+                    current_node.flags = parse_header_flags(fval);
                 else if (fname == "chunk_tree_uuid") {
-                    current_node->chunk_tree_uuid = parse_uuid(fval);
-                    current_node->has_chunk_tree_uuid = true;
+                    current_node.chunk_tree_uuid = parse_uuid(fval);
+                    current_node.has_chunk_tree_uuid = true;
                 } else if (fname == "generation")
-                    current_node->generation = parse_hex<uint64_t>(fval);
+                    current_node.generation = parse_hex<uint64_t>(fval);
                 else if (fname == "owner")
-                    current_node->owner = parse_hex<uint64_t>(fval);
+                    current_node.owner = parse_hex<uint64_t>(fval);
                 else if (fname == "nritems") {
                     // ignored, computed automatically
                 } else if (fname == "level")
-                    current_node->level = parse_hex<uint8_t>(fval);
+                    current_node.level = parse_hex<uint8_t>(fval);
                 else if (fname == "physical") {
                     // ignore physical (derived)
                 } else
                     throw formatted_error("unrecognized header field '{}'", fname);
             }
-        } else if (current_node) {
+        } else if (!node_stack.empty()) {
+            // flush any child nodes deeper than this line's indent
+            flush_to_indent(indent + 1);
+
+            auto& active_node = node_stack.back();
+
             // try to parse as key line: objectid,type,offset
             // key lines look like: "100,INODE_ITEM,0" or "100,1,0"
             if (stripped.find(',') != string_view::npos && !stripped.starts_with("stripe(")) {
@@ -2806,7 +2828,7 @@ static void assemble(string_view input_path, string_view output_path) {
 
                             auto k = parse_key(key_sv);
 
-                            if (current_node->level > 0) {
+                            if (active_node.level > 0) {
                                 // internal node - parse blockptr and generation
                                 btrfs::key_ptr kp;
 
@@ -2827,7 +2849,7 @@ static void assemble(string_view input_path, string_view output_path) {
                                         throw formatted_error("unrecognized key_ptr field '{}'", fname);
                                 }
 
-                                current_node->key_ptrs.push_back(kp);
+                                active_node.key_ptrs.push_back(kp);
                             } else {
                                 // leaf node: save key, next line will be item data
                                 current_key = k;
@@ -2840,17 +2862,17 @@ static void assemble(string_view input_path, string_view output_path) {
             }
 
             // if we have a pending key, this line is the item data
-            if (current_key.has_value() && current_node->level == 0) {
+            if (current_key.has_value() && active_node.level == 0) {
                 auto item_data = parse_item_data(stripped, *current_key, sb);
 
-                current_node->items.push_back({*current_key, move(item_data)});
+                active_node.items.push_back({*current_key, move(item_data)});
                 current_key.reset();
             }
         }
     }
 
-    // flush last node
-    flush_node();
+    // flush remaining nodes
+    flush_all();
 
     if (!have_superblock)
         throw runtime_error("no superblock found in input");
