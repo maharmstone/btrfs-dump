@@ -526,6 +526,8 @@ struct inode_extref {
     char name[0];
 } __attribute__ ((__packed__));
 
+constexpr uint8_t FT_ENCRYPTED = 0x80;
+
 enum class dir_item_type : uint8_t {
     unknown = 0,
     reg_file = 1,
@@ -1974,30 +1976,50 @@ struct std::formatter<enum btrfs::dir_item_type> {
 
     template<typename format_context>
     auto format(enum btrfs::dir_item_type t, format_context& ctx) const {
-        switch (t) {
+        bool encrypted = (uint8_t)t & btrfs::FT_ENCRYPTED;
+        auto base = (enum btrfs::dir_item_type)((uint8_t)t & ~btrfs::FT_ENCRYPTED);
+
+        auto ret = ctx.out();
+
+        switch (base) {
             using enum btrfs::dir_item_type;
 
             case unknown:
-                return format_to(ctx.out(), "unknown");
+                ret = format_to(ret, "unknown");
+                break;
             case reg_file:
-                return format_to(ctx.out(), "reg_file");
+                ret = format_to(ret, "reg_file");
+                break;
             case dir:
-                return format_to(ctx.out(), "dir");
+                ret = format_to(ret, "dir");
+                break;
             case chrdev:
-                return format_to(ctx.out(), "chrdev");
+                ret = format_to(ret, "chrdev");
+                break;
             case blkdev:
-                return format_to(ctx.out(), "blkdev");
+                ret = format_to(ret, "blkdev");
+                break;
             case fifo:
-                return format_to(ctx.out(), "fifo");
+                ret = format_to(ret, "fifo");
+                break;
             case sock:
-                return format_to(ctx.out(), "sock");
+                ret = format_to(ret, "sock");
+                break;
             case symlink:
-                return format_to(ctx.out(), "symlink");
+                ret = format_to(ret, "symlink");
+                break;
             case xattr:
-                return format_to(ctx.out(), "xattr");
+                ret = format_to(ret, "xattr");
+                break;
             default:
-                return format_to(ctx.out(), "{:x}", (uint8_t)t);
+                ret = format_to(ret, "{:x}", (uint8_t)base);
+                break;
         }
+
+        if (encrypted)
+            ret = format_to(ret, ",encrypted");
+
+        return ret;
     }
 };
 
