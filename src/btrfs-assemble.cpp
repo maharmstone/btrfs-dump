@@ -802,26 +802,35 @@ static btrfs::csum_type parse_csum_type(string_view sv) {
 }
 
 static btrfs::dir_item_type parse_dir_item_type(string_view sv) {
+    uint8_t flags = 0;
+
+    static constexpr string_view encrypted_suffix = ",encrypted";
+
+    if (sv.ends_with(encrypted_suffix)) {
+        flags |= btrfs::FT_ENCRYPTED;
+        sv = sv.substr(0, sv.size() - encrypted_suffix.size());
+    }
+
     if (sv == "unknown")
-        return btrfs::dir_item_type::unknown;
+        return (btrfs::dir_item_type)(flags | (uint8_t)btrfs::dir_item_type::unknown);
     else if (sv == "reg_file")
-        return btrfs::dir_item_type::reg_file;
+        return (btrfs::dir_item_type)(flags | (uint8_t)btrfs::dir_item_type::reg_file);
     else if (sv == "dir")
-        return btrfs::dir_item_type::dir;
+        return (btrfs::dir_item_type)(flags | (uint8_t)btrfs::dir_item_type::dir);
     else if (sv == "chrdev")
-        return btrfs::dir_item_type::chrdev;
+        return (btrfs::dir_item_type)(flags | (uint8_t)btrfs::dir_item_type::chrdev);
     else if (sv == "blkdev")
-        return btrfs::dir_item_type::blkdev;
+        return (btrfs::dir_item_type)(flags | (uint8_t)btrfs::dir_item_type::blkdev);
     else if (sv == "fifo")
-        return btrfs::dir_item_type::fifo;
+        return (btrfs::dir_item_type)(flags | (uint8_t)btrfs::dir_item_type::fifo);
     else if (sv == "sock")
-        return btrfs::dir_item_type::sock;
+        return (btrfs::dir_item_type)(flags | (uint8_t)btrfs::dir_item_type::sock);
     else if (sv == "symlink")
-        return btrfs::dir_item_type::symlink;
+        return (btrfs::dir_item_type)(flags | (uint8_t)btrfs::dir_item_type::symlink);
     else if (sv == "xattr")
-        return btrfs::dir_item_type::xattr;
+        return (btrfs::dir_item_type)(flags | (uint8_t)btrfs::dir_item_type::xattr);
     else
-        return (btrfs::dir_item_type)parse_hex<uint8_t>(sv);
+        return (btrfs::dir_item_type)(flags | parse_hex<uint8_t>(sv));
 }
 
 static btrfs::file_extent_item_type parse_file_extent_type(string_view sv) {
