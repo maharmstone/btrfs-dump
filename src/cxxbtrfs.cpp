@@ -184,6 +184,7 @@ constexpr uint64_t EXTENT_FLAG_DATA = 1 << 0;
 constexpr uint64_t EXTENT_FLAG_TREE_BLOCK = 1 << 1;
 constexpr uint64_t BLOCK_FLAG_FULL_BACKREF = 1 << 8;
 
+constexpr uint64_t ROOT_SUBVOL_RDONLY = 1 << 0;
 constexpr uint64_t ROOT_SUBVOL_DEAD = (uint64_t)1 << 48;
 
 constexpr uint64_t QGROUP_STATUS_FLAG_ON = 1 << 0;
@@ -1871,6 +1872,11 @@ struct std::formatter<btrfs::inode_item> {
 
 string root_item_flags(uint64_t f) {
     string ret;
+
+    if (f & btrfs::ROOT_SUBVOL_RDONLY) {
+        ret = "rdonly";
+        f &= ~btrfs::ROOT_SUBVOL_RDONLY;
+    }
 
     if (f & btrfs::ROOT_SUBVOL_DEAD) {
         ret = "dead";
