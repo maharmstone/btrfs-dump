@@ -731,6 +731,13 @@ static void dump_item(span<const uint8_t> s, string_view pref,
                 cout << format("uuid_received_subvol {:x}", num);
 
                 s = s.subspan(sizeof(num));
+
+                while (s.size() >= sizeof(btrfs::le64)) {
+                    cout << format(" {:x}", *(btrfs::le64*)s.data());
+
+                    s = s.subspan(sizeof(btrfs::le64));
+                }
+
                 break;
             }
 
