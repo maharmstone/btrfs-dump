@@ -2060,7 +2060,7 @@ static vector<uint8_t> parse_item_data(string_view type_line, const btrfs::key& 
         }
 
         append(&bi, sizeof(bi));
-    } else if (type_word == "uuid_subvol" || type_word == "uuid_rec_subvol") {
+    } else if (type_word == "uuid_subvol" || type_word == "uuid_received_subvol") {
         btrfs::le64 val = parse_hex<uint64_t>(rest);
         append(&val, sizeof(val));
     } else if (type_word == "dev_replace") {

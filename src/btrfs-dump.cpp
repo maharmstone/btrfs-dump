@@ -728,7 +728,7 @@ static void dump_item(span<const uint8_t> s, string_view pref,
             case UUID_RECEIVED_SUBVOL: {
                 auto num = *(btrfs::le64*)s.data();
 
-                cout << format("uuid_rec_subvol {:x}", num);
+                cout << format("uuid_received_subvol {:x}", num);
 
                 s = s.subspan(sizeof(num));
                 break;
