@@ -622,6 +622,8 @@ static uint64_t parse_root_item_flags(string_view sv) {
 
         if (token == "dead")
             flags |= btrfs::ROOT_SUBVOL_DEAD;
+        else if (token == "rdonly")
+            flags |= btrfs::ROOT_SUBVOL_RDONLY;
         else
             flags |= parse_hex<uint64_t>(token);
     }
