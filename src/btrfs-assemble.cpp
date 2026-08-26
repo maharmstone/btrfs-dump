@@ -2062,9 +2062,35 @@ static vector<uint8_t> parse_item_data(string_view type_line, const btrfs::key& 
         }
 
         append(&bi, sizeof(bi));
-    } else if (type_word == "uuid_subvol" || type_word == "uuid_received_subvol") {
+    } else if (type_word == "uuid_subvol") {
         btrfs::le64 val = parse_hex<uint64_t>(rest);
         append(&val, sizeof(val));
+    } else if (type_word == "uuid_received_subvol") {
+        // space-separated hex values as le64
+        while (!rest.empty()) {
+            while (!rest.empty() && rest.front() == ' ') {
+                rest.remove_prefix(1);
+            }
+
+            if (rest.empty())
+                break;
+
+            string_view token;
+
+            if (auto sp = rest.find(' '); sp != string_view::npos) {
+                token = rest.substr(0, sp);
+                rest = rest.substr(sp);
+            } else {
+                token = rest;
+                rest = "";
+            }
+
+            if (token.empty())
+                continue;
+
+            btrfs::le64 val = parse_hex<uint64_t>(token);
+            append(&val, sizeof(val));
+        }
     } else if (type_word == "dev_replace") {
         btrfs::dev_replace_item dri;
 
